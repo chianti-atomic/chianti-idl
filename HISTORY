@@ -1,0 +1,1473 @@
+
+**THIS IS AN HISTORY FILE WHERE ALL THE CHANGES TO THE 
+CHIANTI IDL PROCEDURES ARE LOGGED, STARTING FROM DEC 2000 *** 
+
+Most recent updates first.
+
+Last update  EL October 30 2009 
+
+
+% list of changes for v.6 (latest changes first):
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+EL   October 30 2009 added EL correction to 
+correct_pops.pro
+;        Corrected error in the calculation of the correction factor
+
+EL   October 30 2009 added PRY corrections to continuum calculation:
+isothermal.pro:
+;              The keyword EM_INT is now used in the call to the
+;              continuum routines.
+sutherland.pro:
+;            Introduced EM_INT keyword for specifying emission measure
+;            values for isothermal plasmas.
+itoh.pro
+;            Introduced EM_INT keyword for specifying emission measure
+;            values for isothermal plasmas.
+freefree.pro
+;          Added EM_INT= keyword; simplified how the routine decides
+;          which calculation to use (Itoh or Sutherland)
+freebound.pro
+;            Introduced EM_INT keyword for specifying emission measure
+;            values for isothermal plasmas.
+two_photon.pro
+;            Introduced EM_INT keyword for specifying emission measure
+;            values for isothermal plasmas.
+make_chianti_spec.pro
+;                 Modified call to continuum routines to use new
+;                 EM_INT keyword (for isothermal plasmas).
+
+
+
+GDZ  July 10 2009 added EL correction to 
+correct_pops.pro
+;Corrected error in the definition of total_rate
+
+
+GDZ (July 3 2009): included Enrico's corrections to the temperature arrays.
+Routines modified:
+
+continuum/two_photon.pro
+dem/get_contributions.pro
+emiss/bb_rad_loss.pro
+emiss/emiss_calc.pro
+synt_spec/ch_synthetic.pro
+level_population/correct_pops.pro\
+level_population/plot_populations.pro
+ level_population/pop_processes.pro
+level_population/show_pops.pro
+
+
+
+***RE-ORGANISED ROUTINES INTO A NEW dIRECTORY STRUCTURE*** GDZ 2-JUNE-2009
+
+bb_rad_loss:
+> ;       V 6, 5-Jun-2009, KPD
+> ;                     corrected itrans, line 249 to be LONG type
+
+make_chianti_spec:
+;               v.19, 16-Nov-2007, Vincenzo Andretta, INAF/OACN (andretta@oacn.inaf.it)
+;                 Fixed a problem with units when LOGT_ISOTHERMAL is set.
+
+
+use_chianti:
+;               v.11, 3-Jun-2009, GDZ 
+;                   made the new v.6 ioneq the default.
+
+
+zion2name.pro
+This routine was removed from v.3 of CHIANTI. It has now been restored to the
+low_level subdirectory.
+
+pop_solver.pro
+;       V. 21  1-Aug-2006, Enrico Landi
+;               Changed the way recombination is handled for the He-like ions.
+;               Collision rates are redefined including recombination rates
+;               (plus cascades) for the levels for which they are available,
+;               scaled by the ratio of the abundances of the recombining and
+;               recombined ion.
+
+read_ionrec.pro
+;      V 3, 4-Aug-2006, Enrico Landi (EL)
+;           corrected a bug in the definition of the temperature of the
+;           ionization data in case the .reclvl data file is missing but
+;           but the .cilvl file is available (line 222).
+
+rad_loss.pro
+;       Ver.6, 12-Jul-2007, EL
+;                  corrected the output units in the y-axis of the display
+
+read_wgfa2.pro
+;       V.4, 26-May-09, Enrico Landi (EL)
+;        Modified size of input arrays. Now the routine can read a file up to
+;        100,000 lines.
+;        Modified definition of variable index (now index=0L).
+;
+;       V.5, 26-May-09, Peter Young
+;        Modified the way references are read.
+
+ioniz_cross.pro
+;    Ver.1, 17-Nov-2006, Ken Dere
+
+ioniz_rate.pro
+;    Ver.1, 17-Nov-2006, Ken Dere
+
+make_ioneq_all.pro
+;    Ver.1, 3-March-2009, Ken Dere
+
+recomb_rate.pro
+;    Ver.1, 17-Nov-2006, Ken Dere
+
+branching_ratios.pro
+;     Ver.3, 13-Feb-2009, Peter Young
+;        switched to using read_wgfa_str; modified the printed output;
+;        added LEVEL= and MAXLEV= keywords.
+
+metastable_levels.pro
+;    Ver.2, 13-Feb-2009, Peter Young
+;      changed input to ionname; added print out of levels; added
+;      /quiet keyword.
+
+Added the following new routines to the /extra directory:
+  read_wgfa_str.pro
+  branching_ratios.pro
+  level_lifetime.pro
+  plot_config_energies.pro
+  ch_config_emiss.pro
+  metastable_levels.pro
+  spl2ups.pro
+PRY, 13-Feb-2009
+
+max_temp.pro
+;                V.5, I. Ugarte-Urra (IUU) 5-Jan-2009
+;   	    	    added IONEQ_NAME and QUIET keywords.
+
+gofnt.pro
+;       V.15, 22-Aug-2008, Peter Young
+;             Corrected code where temperature range is reduced based
+;             on zero G(T) values.
+;
+
+ch_synthetic.pro
+;         v.29,  22-Aug-2008, Peter Young
+;                 Changed list_goft_new and this_goft to be double
+;                 precision, and changed str.goft to be double precision.
+;
+
+freefree.pro
+;    V. 6, 9-May-2008, Peter Young & Kevin Tritz
+;          Modifed code so that temperatures can be specified in a unordered
+;          list.
+
+low_level/read_wgfa2.pro
+;        Modified size of input arrays. Now the routine can read a file up to
+;        50 000  lines.
+
+extra/emiss_calc.pro
+;       V.29 , 7-Dec-07, GDZ changed a for loop to long to allow long
+;              lists of lines.
+
+extra/ratio_plotter.pro
+
+;       v.41, 7-dec-07, GDZ fixed two minor bugs.Allow long lists.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+make_chianti_spec.pro
+;               v.18, 4-May-2006, Peter Young
+;                 Changed LAMBDA to be a double array in order to correct a
+;                 problem with line profiles for very small bin sizes.
+;                 Problem pointed out by Matthew West (Imperial).
+
+matrix_solver.pro
+;    Ver.2, 10-Mar-2006, Peter Young
+;        commented out warning message about status as the level populations
+;        are still accurate to < 0.001% when this occurs and so it's not
+;        neccessary to warn users.
+
+freefree.pro
+;    V. 5, 9-Mar-2006, Peter Young
+;          Added /kev keyword
+
+freebound.pro
+;      Ver.4, 10-Mar-2006, Peter Young
+;           added keV keyword
+
+two_photon.pro
+;       v.13, 10-Mar-2006, Peter Young
+;                  added /keV keyword 
+
+make_chianti_spec.pro
+;               v.17, 10-Mar-2006, Peter Young
+;                 The /keV keyword is now passed to the continuum routines,
+;                 rather than make_chianti_spec performing the conversion
+;                 itself.
+
+itoh.pro
+;    Ver.4, 9-Mar-2006, Peter Young
+;            Added /keV keyword.
+
+sutherland.pro
+;       Ver. 4, 9-Mar-2006, Peter Young
+;           Added /keV keyword.
+
+freebound_ion.pro
+;      Ver.4, 10-Mar-2006, Peter Young
+;          Added /keV keyword
+
+integral_calc.pro
+;       V.8, 6-Feb-2006, Peter Young
+;              Integration is now performed on d(logT) intervals, rather than
+;              dT intervals following problems identified by Luca Teriaca.
+
+correct_pops.pro
+;    Ver.3, 1-Feb-2006, Peter Young
+;        Corrected error: sum of populations is now renormalized to 1.
+
+show_pops.pro
+;       v.17, 12-Dec-2005, Peter Young
+;              routine now performs check on existence of .splups file
+;              instead of .elvlc since with v.5 some ions have a .elvlc
+;              file but nothing else (fe_3, fe_4)
+
+
+isothermal.pro 
+;       V.9, 3-Oct-2005, GDZ
+;              Now the FOR loop accepts more than 32000 lines.
+
+ch_ss.pro
+;       V.13, 3-Oct-2005 GDZ
+;          Replaced FOR i=0, calls with FOR i=0L, calls, so 
+;          the routine does not crash with a large number of lines.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+THE FOLLOWING ARE CHANGES TO BE IMPLEMENTED IN V. 5.1:
+
+SETUP/use_chianti.pro
+;               V.10,  19-Sept-2005, GDZ 
+;                   made last version backward-compatible.
+
+
+low_level/continuum/get_ieq.pro
+
+;      v.2, 14-Sept-2005, GDZ
+;      modified error message.
+
+ extra/show_pops.pro
+
+;       V.16, 14-Sept-2005 Giulio Del Zanna 
+;              modified header.
+
+isothermal.pro 
+
+;       V.8, 14-Sept-2005 GDZ 
+;              Added ALL keyword and modified header, error message.
+
+
+two_photon.pro
+;       v.12,  31-Aug-2005, GDZ
+;                  missed one correct definition of ioneq_ionrec. Fixed it now. 
+make_chianti_spec.pro
+
+;               v.16, 31-Aug-2005, GDZ
+;                 Fixed a typo (keyowrd_set).
+
+ch_synthetic.pro
+
+;         v.28,  31-Aug-2005, GDZ
+;                 Fixed bug concerning the case when multiple temperatures 
+;                 (i.e. logt_isothermal) were defined as input. The program
+;                 was, in some cases, returning null values.
+;                 The problem was the use of nt, the number of good temperatures
+;                 for each ion, for the definition of the arrays, instead of
+;                 using the number of logt_isothermal values (and the t_index).
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+THE FOLLOWING ARE CHANGES TO BE IMPLEMENTED IN V. 5:
+
+extra/ratio_plotter.pro
+;       V.40, 18-Aug-2005, Peter Young
+;             Corrected bug for temperature version of routine that led to
+;             mismatch between stated parameters and plotted parameters
+
+
+extra/ratio_plotter.pro
+
+;       V.39, 17-Aug-2005, Peter Young
+;             Adjusted layout of widget, modified printing of wavelengths
+;             in the plot window, and adjusted plot limits for log scale.
+
+
+low_level/pop_solver.pro
+
+;       V. 20  16-Aug-2005, Peter Young
+;               Routine now catches any NaN values in the level populations
+;               and prints a warning. All pops are set to zero in this case.
+
+
+low_level/correct_pops.pro
+
+;    Ver.2, 16-Aug-2005, Peter Young
+;        Changed total_exc to be dblarr in order to prevent NaNs.
+
+
+extra/ratio_plotter.pro
+
+;       V.38, 15-Aug-2005, Peter Young
+;             Corrected bug introduced by modification above.
+
+
+extra/ratio_plotter.pro
+
+;       V.37, 15-Aug-2005, Peter Young
+;             Corrected bug with derived densities when the theoretical ratio
+;             is double-valued.
+
+
+SETUP/use_chianti.pro
+
+;               V.9,  12-Aug-2005, GDZ 
+;                   Changed default ioneq file from mazzotta_etal_ext to 
+;                   mazzotta_etal_9.ioneq where ion fractions have been extended
+;                   up to 10^9 K. This is useful to avoid steps in the
+;                   emissivities at high-temperatures.
+;
+
+ch_line_list.pro
+;        v.9, 4-Aug-2005 GDZ
+;           Corrected a bug introduced in the previous version.
+;           Also switched to \documentclass when making the latex file.
+
+extra/ratio_plotter.pro
+
+;       V.36, 12-Aug-2005, GDZ
+;             Reinstated some previous cosmetic features. Also adjusted
+;             some sizes, added some checks (e.g. minimum is set to 1e-10 if
+;             plot is in log scale -to avoid log(0)-; automatic scaling cannot
+;             be set if log scale is on).
+
+
+plot_populations.pro
+
+;       V 11, 12-Aug-2005, GDZ 
+;                  The number of levels is now optional. Also, a check that the
+;                  number of levels must be less than the levels in the file is
+;                  now enforced.
+
+
+minor updates (mainly changes to the PURPOSE: and headers)  11-Aug-2005: 
+
+extra/dens_plotter.pro
+extra/which_line.pro
+extra/pop_processes.pro
+other/DEM/chianti_dem.pro
+ch_ss.pro
+isothermal.pro
+freebound.pro
+freefree.pro
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Last update   3-Aug-2005 GDZ
+
+low_level/ion_frac_interp.pro
+;   Ver.1, 10-Jun-2005, Peter Young
+
+
+low_level/ci_rec_interp.pro
+;   Ver.1, 29-Jun-2005, Peter Young
+;       adapted from original code by Enrico Landi
+
+low_level/correct_pops.pro
+;    Ver.1, 10-Jun-2005, Peter Young
+;        Taken original code of Enrico Landi and inserted it into a separate
+;        routine.
+
+
+low_level/matrix_solver.pro
+;    Ver.1, 1-Jul-2005, Peter Young
+
+
+extra/which_line.pro
+;     Ver.1, 22-Jun-2004, Peter Young
+
+
+extra/rate_coeff.pro
+;       Ver.2, 5-Jul-2005, Peter Young
+;           updated for v.5 of CHIANTI
+
+
+extra/pop_processes.pro
+;      Ver.6, 1-Jul-2005, Peter Young
+;          added warning for ions with ionization/recombination
+
+
+ch_line_list.pro
+;        v.8, 18-Jul-2005 GDZ
+;           Modified the use of the /kev keyword. Also, now the
+;           routine accepts input structure with the units in keV. 
+
+
+ch_synthetic.pro              
+;         V 26,    17-Apr-2004, Enrico Landi (EL)
+;                  Added the recombination/ionization population processes.
+;
+;         V.27,    13-Apr-2005, EL
+;                  Replaced the main loop to calculate individual line intensities
+;                  with operations among arrays, to speed the whole program in case
+;                  of large numbers of lines.
+
+ch_ss.pro
+;       V.11,  22-Jul-2005  GDZ 
+;
+;          -Added keV option and a few more extra checks.
+;       V.12,  2-Aug-2005 GDZ
+;           put RETAIN=2 in the main plotting window.
+
+
+freefree.pro
+;       V 4, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+freebound.pro
+;       V 3, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+make_chianti_spec.pro         
+;               v.13 26-Apr-2005, Enrico Landi (EL)
+;                   Fixed a minor bug: if the lines were more than 32768 (2^15), the main
+;                                loop crashed.
+;               v.14 22-Jul-2005 GDZ 
+;                 -fixed a bug. When the routine was run once without
+;                 defining the lambdas, and then with the lambdas
+;                 defined (the units were switched to photons)
+;                 -fixed a bug. When the effective areas were used,
+;                 all lines were used to create the spectrum.
+;                 -added hard-wired switch to photons when using
+;                 effective area files.
+;
+;                 -added the keV option
+;
+;                 -now can output a spectrum only with the continuum
+;                 (i.e. even if no emission lines are present). 
+;
+;               15, 2-Aug-2005, GDZ 
+;                 Added a check on the input structure. If it was
+;                 calculated with ch_synthetic and the keyword
+;                 /no_sum_int, it cannot be used here.
+
+plot_populations.pro      
+;       V 10, 4-May-2005, Enrico Landi (EL)
+;                  Modified in order to include ionization and recombination
+;                  data in the input to POP_SOLVER, now it allows choice of .ioneq
+;                  file needed to include ionization and recombination.
+
+rad_loss.pro
+;       V 5, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+two_photon.pro
+;       V.9,  8-Jun-2004, EL
+;                  modified the input to POP_SOLVER, now it includes ion/rec
+;
+;       V.10, 5-Jul-2005
+;                  corrected problems with the input structure for pop_solver
+;
+;       v.11 29-Jul-2005, GDZ
+;                  fixed bug, only define ioneq_ionrec when files are
+;                  there (it was failing with neutrals)
+
+low_level/bb_rad_loss.pro           
+;       V.4, 5-Apr-2005, EL
+;                  modified the input to POP_SOLVER in order to add ion/rec
+;                  in the calculation of level populations. All the rest
+;                  is unchanged.
+;       V 5, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+low_level/fb_rad_loss.pro           
+;       V 2, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+low_level/convert_terms_all.pro      
+; new routine.   
+; MODIFIED    : Version 1, EL 11-Apr-2005
+;             convert_terms_all has been derived from the existing CHIANTI
+;             routine CONVERT_TERMS.
+
+low_level/pop_solver.pro               
+;       V. 15  7-Oct-2004  Enrico Landi (EL)
+;               Included ionization and recombination as level population 
+;               processes.
+;
+;       V. 16  6-Apr-2005  Enrico Landi (EL)
+;               Included extrapolation of ionization and recombination rates
+;               for temperatures beyond those provided in the .ci and .rec files.
+;       V. 17  10-Jun-2005  Peter Young
+;               Tidied up code, introduced call to correct_pops for
+;               ionization/recombination, and added radfunc= and
+;               sum_mwl_coeffs= keywords
+;
+;       V. 18  12-Jul-2005, Peter Young
+;               Improved implementation of RADFUNC keyword
+;
+;       V. 19  27-Jul-2005, Peter Young
+;               Corrected bug when the ionrec structure does not exist.
+
+
+low_level/read_ioneq.pro     
+;       v.6, 25-Oct-2004, Peter Young
+;            modified format statement so that it will read any number of
+;            temperatures.
+;       V 7, 25-May-2005, GDZ 
+;                  corrected routine header.
+
+low_level/read_ionrec.pro      
+
+; New routine (reads *.ci and *.rec files)
+;      Ver.1, 23-Feb-2004, Enrico Landi (EL)
+;
+;      V 2, 29-Jul-2005 Giulio Del Zanna (GDZ). 
+;           Modified input file names. Also rewritten the routine,
+;           added some checks, and now also reads the references at
+;           the end of the files.
+
+
+low_level/setup_ion.pro         
+;       V.6, 25-Feb-2004, Enrico Landi (EL)
+;                   Added call to read_ionrec.pro to read ionization 
+;                   and recombination files.
+
+extra/dens_plotter.pro
+
+; MODIFIED:   V.2,  2-Aug-2005, GDZ
+;              Now the routine handles the dielectronic case
+;
+
+extra/emiss_calc.pro               
+;       V.24  5-Mar-2004, Enrico Landi (EL)
+;                  included ionization and recombination as level population
+;                  processes
+;
+;       V.25  6-May-2005, EL
+;                  corrected a minor incompatibility with IDL 5.6
+;
+;       V.26  5-Jul-2005, Peter Young
+;                  added RADFUNC= and SUM_MWL_COEFFS= keywords
+;
+;       V.27  1-Aug-2005, Peter Young
+;                  re-ordered code for setup to prevent crash
+;
+;       V.28  3-Aug-2005,GDZ
+;                  fixed bug, only define ioneq_ionrec when files are
+;                  there (it was failing with neutrals)
+
+
+extra/g_of_t.pro
+;       Ver. 11, 9-Feb-2005, Peter Young
+;                   changed keyword_set(abund) to keyword_set(abund_file)
+
+extra/ratio_plotter.pro
+
+;       V.35, 2-Aug-2005, GDZ
+;
+;             Various modifications. Now the routine handles the
+;             dielectronic case. Added printing of line lists in the
+;             line ratio plots. Added the option to print directly to
+;             the PRINTER. Added the option to SAVE a structure
+;             containing the emissivities into an IDL save file (using
+;             SAVEGEN). Added retain=2 to the window. Added
+;             logarithmic or linear plot switch. Added cleaning of the
+;             variables at the start of the routine. Various minor
+;             cosmetic changes.
+
+extra/show_pops.pro        
+;       V 13, 4-May-2005, Enrico Landi (EL)
+;                  Modified in order to include ionization and recombination
+;                  data in the input to POP_SOLVER
+;       V.14, 26-May-2005, Peter Young (implemented by GDZ)
+;                  added SUM_MWL_COEFFS optional input for allowing
+;                  non-Maxwellian distributions to be considered.
+;
+;                  added LEVEL= optional input to only print the populations of
+;                  a few levels.
+;
+;       V.15, 5-Jul-2005, Peter Young
+;                  added RADFUNC= and /QUIET keywords
+
+extra/temp_plotter.pro
+; MODIFIED:   V.2,  2-Aug-2005, GDZ
+;              Now the routine handles the dielectronic case
+
+
+other/DEM/dem_fit.pro              
+;       Ver 2,  EL 6-Apr-05
+;               Renamed the variable "deriv" to "deriv1" to avoid conflicts
+;               with an IDL routine with the same name.
+
+other/DEM/get_contributions.pro      
+;       V. 9, 4-May-05 Enrico Landi (EL)
+;                  Modified in order to include ionization and recombination
+;                  data in the input to POP_SOLVER
+
+ other/plot_ioneq.pro
+;       V.5, 9-Feb-2005, Peter Young
+;            Changed ion= keyword to ion_range=
+
+other/low_level/calc_dmm_tr.pro
+;               V.7, 16-Sep-2004, Peter Young
+;                    added /NO_DE in call to emiss_calc as chianti_te expects
+;                    emissivities in photon units
+
+
+other/low_level/calc_dmm_dr.pro
+;               V.15, 16-Sep-2004, GDZ
+;                    added /NO_DE in call to emiss_calc as chianti_ne expects
+;                    emissivities in photon units
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+Last update   7-Nov-03 , GDZ
+
+extra/ratio_plotter:
+;       V.34, 12-Dec-03, Peter Young
+;             Lowered the position of the postscript plot on the paper so
+;             that the title isn't chopped off on US letter-size paper.
+;
+
+low_level/continuum/sutherland:
+;       Ver.3.8, 5-Nov-03, Peter Young
+;           Corrected bug found by Jim McTiernan when multiple temperatures
+;           were input. The quantity 'newfactor' was not being calculated
+;           correctly due to indexing problems.
+
+
+extra/ratio_plotter:
+
+;       V.31, 3-Nov-03, Giulio Del Zanna 
+;             Added printout of Ne(Te) vs. ratio values
+;             Modified format e8.2 to e9.2 for Windows compatibility.
+;       V.32, 6-Nov-03, Peter Young
+;             Corrected bug when new emissivities are calculated that
+;             prevented the emissivites in emiss_sel from being updated.
+;             Also, the Ne(Te), ratio values are now printed to a pop-up
+;             window through the new 'SHOW RATIO VALUES' button rather
+;             than printed to the text window (see V.31).
+;       V.33, 7-Nov-03, Giulio Del Zanna 
+;             Modified the popup widget by calling xpopup and adding 
+;             labels. Now it is possible to paste and copy the RATIO 
+;             values into a file.
+;
+
+ch_ss:
+;          V.10, 7-Nov-03  GDZ
+;
+;          Modified format e8.2 to e9.2 for Windows compatibility.
+;          Replaced f9.4 with f11.4 format for the wavelengths.
+;          Some minor modifications to the widget.
+;
+;          Added extended details in the ascii output spectrum.
+;
+;          Added more explanations in the HELP buttons.
+
+ch_synthetic:
+;         V.24,    10-Oct-2003, K.Dere
+;                  added modifications from K.Dere, regarding the satellite
+;                  lines. 
+;
+;         V 25,    3-Nov-2003, GDZ
+;                 Added GROUP keyword, and modified so the progress widget can
+;                 be stopped within IDL Windows.
+
+
+low_level/read_wgfa2:
+;       V.3, 3-Nov-03, Giulio Del Zanna (GDZ)
+;        Modified size of input arrays. Now the routine can read a file up to
+;        30 000  lines.
+
+
+low_level/ch_get_file: 
+;                 V.7, 3-Nov-03  GDZ
+;                 Fixed a bug when using Windows, the returned path was not
+;                 correct. 
+
+other/DEM/get_contributions:
+;       V. 8, 3-Nov-03  GDZ
+;             Modified format e8.2 to e9.2 for Windows compatibility.
+
+gofnt:
+;       V.14, 3-Nov-03  GDZ
+;             Modified format e8.2 to e9.2 for Windows compatibility.
+
+
+temperature_ratios:
+;        V.12, 3-Nov-03  GDZ
+;           Modified format e8.2 to e9.2 for Windows compatibility.
+
+density_ratios:
+;        V.13, 3-Nov-03  GDZ
+;           Modified format e8.2 to e9.2 for Windows compatibility.
+
+
+ch_line_list:
+;        V.7, 3-Nov-03  GDZ
+;           Modified format e8.2 to e9.2 for Windows compatibility.
+
+------------------------------------------------------------
+low_level/pop_solver:
+
+;               -removed all COMMON blocks (note that only proton_dens.pro has
+;                one: COMMON elements,abund,abund_ref,ioneq,ioneq_logt,ioneq_ref)
+;               -only the essential information input is passed to the routine
+;                via a new input structure.
+;               -fixed a bug, that affected all the satellite lines, and was 
+;                introduced in v.12,  included in  CHIANTI v.4.0.
+;                basically the ionization potential was not subtracted when
+;                calculating the Delta E in the exponential.
+
+for all the following routines, modified the input to POP_SOLVER,
+ now it is dealt with an input structure:
+
+ch_synthetic.pro
+plot_populations.pro
+two_photon.pro
+extra/emiss_calc.pro
+extra/show_pops.pro
+low_level/bb_rad_loss.pro  
+     (also shorten the whole procedure,by calling setup_ion)
+
+other/DEM/get_contributions.pro
+------------------------------------------------------------
+
+low_level/ch_xmenu_sel.pro
+
+;       V.10 3-Oct-2003, GDZ 
+;          inserted the ,/MODAL keyword within the main widget, for 
+;          compatibility with IDL v.5.4
+
+
+gofnt.pro 
+
+;       V.13, 24-Sept-2003, GDZ 
+;              Corrected a bug when logt0 is not defined.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+updates from Peter Young -- 28-Aug-2003
+
+isothermal.pro
+
+	V.7, 18-Aug-03, Peter Young
+	Added EM= keyword.
+
+low_level/continuum/sutherland.pro
+
+;       Ver.3.7, 18-Aug-03, Peter Young
+;           Activated /PHOTONS keyword
+
+
+ch_synthetic.pro
+
+;         V. 22, 19-Aug-03, Peter Young
+;                  when logem_isothermal is input, the derived EM is now a
+;                  DOUBLE array rather than FLOAT, preventing infinities when
+;                  logem_isothermal values are large.
+
+extra/ratio_plotter.pro
+
+;       V.30, 28-Aug-03, Peter Young
+;             corrected bug when two lines have the same wavelength by
+;             introducing .ind tag to emiss_sel
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+these fixes constitute the release of the patch tar file:
+
+CHIANTI_4.1_update_pro.tar.gz (8-Aug-2003)
+
+-added  
+
+extra/chianti_font.pro
+
+to fix the problem of the fonts in Windows.
+
+rad_loss.pro: 
+
+       Ver.4, 8-Jul-2003, Peter Young
+               Updated routine header (no changes to code).
+
+low_level/ch_xmenu_sel.pro:
+
+       V.9, 30-Jun-2003, Peter Young
+          Added call to CHIANTI_FONT to correct problem with fixed font in 
+
+gofnt.pro:
+
+       V.12, 25-Jun-03, GDZ, 
+              Added many new keywords. Now is possible to use the routine 
+              with background jobs, in not-interactive mode.
+              Rounded the wavelengths. 
+
+extra/ratio_plotter.pro: 
+
+       V.27, 10-Feb-03, Peter Young
+             corrected bug related to fonts on Windows PCs
+
+       V.28, 13-Feb-03, Peter Young
+             corrected problem when ion balance data dosen't exist for 
+             an ion
+
+       V.29, 18-Feb-03, Peter Young
+             added call to routine chianti_font to deal with fonts.
+
+
+synthetic.pro:
+
+       V.6, 14-Feb-2003 GDZ.
+             Fixed a bug (keyword PHOTONS was not active). 
+
+make_chianti_spec.pro:
+
+               v.12 2-Dec-2002, GDZ. 
+                   Fixed a bug:  Removed the plotting of the window with the effective areas.
+
+
+SETUP/use_chianti.pro:
+
+               V.8, GDZ 13-Feb-2003
+                   Changed default ioneq  file, to include ALL the elements.
+
+idl/extra/emiss_calc.pro 
+
+              Added a keyword
+
+idl/low_level/setup_elements.pro
+
+              minor modification.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+26-Nov-2002  Giulio Del Zanna (GDZ) 
+
+these fixes constitute the release of the patch tar file:
+
+ CHIANTI_4.01_update_pro.tar.gz (2-Dec-2002)
+
+
+read_dem:  corrected a bug when '-1' values are in the files (PRY)
+ch_xmenu_sel: a cosmetic change (PRY)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+19-Sep-2002 (GDZ) 
+
+GOFNT: removed  a stop in the routine. (GDZ)
+
+CH_SYNTHETIC:
+           Corrected the definition of the UNITS in case LOGT_ISOTHERMAL
+                  is defined, also updated the header. (GDZ)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+18-Sep-2002
+
+convert_terms:  Fixed a bug with the jvalue (GDZ)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+17-Sep-2002 (GDZ)
+
+CH_SYNTHETIC:
+                  Corrected a bug: the functional (T,N) form
+                  is now only accepted if DENSITY is an array with at least two
+                  values.
+
+GOFNT:        Clarified output units (GDZ).
+
+RATIO_PLOTTER: 
+             added scrolling in main frame (GDZ).
+
+EMISS_CALC:
+             Allowed a density of 1 cm-3 to be input.
+
+
+POP_SOLVER:
+               corrected bug for proton rates. The excitation 
+               and de-excitation rates were being swapped.
+
+CHIANTI_NE: added !p.multi = 0 upon exit and added X-label
+CHIANTI_TE: added !p.multi = 0 upon exit and added X-label
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+15-Aug-02 (GDZ)
+
+low_level/ch_xmenu.pro      removed.
+low_level/ch_xselect_s.pro  removed.
+
+density_ratios: (GDZ)
+
+              Major revision:
+              -Added the keyword VERBOSE, to avoid printing out long lists of lines.
+              -Removed the call to ch_xselect_s, that did not work for long lists.
+              -Added a '*' in the line lists, to identify 'unobserved' lines.
+              -Replaced the commands to create PS file, to make it
+               cross-platform compatible.
+              -Added a large number of cosmetics, mainly lables to the axes and
+               titles, that were missing.
+              -Removed plotting in windows already present.
+              -Added the CHIANTI version number in the outputs.
+
+gofnt: (GDZ)
+              Major revision:
+              -Removed the call to ch_xselect_s, that did not work for long lists.
+              -Added a '*' in the line lists, to identify 'unobserved' lines.
+              -Replaced the commands to create PS file, to make it
+               cross-platform compatible.
+              -Added a large number of cosmetics, mainly lables to the axes and
+               titles.
+              -Added keyword ALL. If set, all lines are calculated, including
+               the 'unobserved' ones. 
+              -Added the CHIANTI version number in the outputs.
+
+temperature_ratios: (GDZ)
+
+              Major revision:
+              -Added the keyword VERBOSE, to avoid printing out long lists of lines.
+              -Removed the call to ch_xselect_s, that did not work for long lists.
+              -Added a '*' in the line lists, to identify 'unobserved' lines.
+              -Replaced the commands to create PS file, to make it
+               cross-platform compatible.
+              -Added a large number of cosmetics, mainly lables to the axes and
+               titles, that were missing.
+              -Removed plotting in windows already present.
+              -Removed the pressure keyword.
+              -Added the CHIANTI version number in the outputs.
+
+EMISS_CALC:  (GDZ)
+                   Modified the use of Version, to make it compatible with the
+                   other CHIANTI v.4 routines.
+
+emiss_select: (GDZ)
+             Replaced the entire  widget with a call to ch_xmenu_sel.
+             This works fine with very long lists of lines, while previously
+             the widget was very slow and sometimes would hang.
+
+ch_xmenu_sel: (GDZ)
+         Modified a few cosmetics, and add the option to have a TEXT string
+         array to add as a comment in the top widget.
+
+use_chianti:  allow for backward compatibility with v.3 of the database
+              (the abundance files have changed names from v.3 to v.4 !!! ).(GDZ)
+
+ratio_plotter Another fix. (PRY)
+
+make_chianti_spec: (GDZ)
+                    speeded up the routine, by changing the way the PEAK tag is
+                    added to the structure. The drawback is that only the
+                    'standard v.4 tags' are allowed, and future additions will
+                    have to be dealt properly. Added VERBOSE options.
+
+two_photon: added keyword VERBOSE
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+13-Aug-02 (GDZ)
+
+ion2spectroscopic Corrected a typo concerning XXII. (GDZ)
+spectroscopic2ion Corrected a typo concerning XXII. (GDZ)
+
+use_chianti: removed the '***' (GDZ)
+
+ch_line_list: better info printed (GDZ)
+
+ch_ss:            
+            Restored the correct use of ch_line_int, now only the lines in the
+            plot window are listed, and the ALL keyword is in use. 
+            Now the correct xrange is loaded into COMMON when line int. are
+            restored. Now it checks if all ions were in the structure, when
+            restoring the line intensities, and flags the widget button accordingly.
+            Added a device,decomposed=0. to remove problems with colors.
+            Corrected the use of the DEM, IONEQ and ABUND pulldown menus,
+            avoiding conflicts between files in the working and CHIANTI
+            directory having the same name.
+            Added printing of references for ancillary files, and a check on the
+            element abundances vs. the elements present in the structure.
+
+
+ch_get_file:  corrected for a bug in the directory output.(GDZ) 
+
+ratio_plotter (PRY)
+              changed the temperature/density text widget so that numbers 
+              are registered even if the return key has not been hit.
+
+pop_solver:    within the equation solving section, I've set 
+                the population of the ground level (rather the n_level level) 
+                to 1, and this seems to stop negative populations appearing 
+                in extreme conditions. (PRY)
+
+show_pops:  added POPSTR output, and tidied up header. (PRY)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+08-Aug-02
+
+ch_ss: fixed a problem with the default element ab. file.(GDZ)
+read_klgfb: corrected a typo. (GDZ)
+
+emiss_calc:   Stopped "lines" with zero wavelength being included.
+              Added CHIANTI VERSION (PRY).
+ 
+ratio_plotter: a number of cosmetic changes to make the 
+               GUI more user-friendly (PRY).
+               Changed the use of !ioneq_file.
+
+ch_synthetic: Added more error info. 
+              Changed the use of the DENSITY keyword. 
+              It is possible to input an array of values if 
+              LOGT_ISOTHERMAL is defined. (GDZ)
+
+isothermal:   Added one error checking  (GDZ).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+06-Aug-02 GDZ
+
+EMISS_CALC: Theoretical wavelengths weren't being flagged so this
+             has now been corrected. (PRY) 
+             Changed the use of CHIANTI system variables. (GDZ)
+
+ratio_plotter: many corrections (PRY-GDZ)
+
+emiss_select: added transition information to the widget (PRY)
+
+POP_PLOT:  added ABUND_FILE to the call to emiss_calc (was missing).
+           Changed the use of CHIANTI system variables. (GDZ)
+
+INTEGRAL_CALC: Changed the use of CHIANTI system variables (GDZ). 
+
+proton_dens: Changed the use of CHIANTI system variables + 
+             added a line of comment (GDZ).
+
+use_chianti:  Changed the use of CHIANTI system variables. Added comments on
+               the which CHIANTI version is used. (GDZ)
+
+SHOW_POPS: changed the use of CHIANTI system variables (GDZ). 
+
+density_ratios: changed the use of CHIANTI system variables (GDZ).
+
+temperature_ratios: changed the use of CHIANTI system variables (GDZ).
+ 
+calc_dmm_dr: changed the use of CHIANTI system variables (GDZ).
+ 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+02-Aug-02 GDZ
+
+Added the following procedures in 
+
+/idl/low_level/continuum
+
+get_ieq    outputs the interpolate ion fraction values at the input 
+           temperatures (PRY).
+
+verner_xs  Reads the Verner & Yakovlev (A&AS 109, 125, 1995) photoionization
+           cross-section data stored in the verner_short.txt file.(PRY).
+
+freebound_ion Calculates the free-bound from a single ion.(PRY).
+
+karzas_xs Outputs the photoionization cross-section 
+           using the Karzas & Latter  (1961) formulation. (PRY).
+
+read_fblvl To read files containing observed free-bound energy levels (PRY).
+
+---------------------------------------------------------------------------
+
+freebound: revised call to freebound_ion; corrected ion fraction problem (PRY).
+
+fb_rad_loss: Completely new version (PRY).
+
+
+use_chianti:  slightly modified (GDZ)
+ch_get_file:  changed size (GDZ)
+ch_synthetic: Replaced all DBLARR and DOUBLE calls with floats.
+              Added a comment at the end of the routine when it finishes (GDZ)
+
+ch_line_list: Modified the output labeling.
+              Fixed two bugs regarding /MINI and /MIN_ABUND.
+              Reduced size of latex output (was 12pt).
+              Changed output in isothermal case (no Tmax given) (GDZ)
+              
+ch_ss: Modified the output labels on the plot, inside and on the axis.
+       Also modified a few minor things like the appearance of the Log T,EM values.
+       Fixed a bug when creating the latex output. 
+       Now it restores at the end  previous colors and settings. (GDZ)
+
+temperature_ratios: Fixed label mistake, and changed all the formats. (GDZ)
+density_ratios:     Changed all the formats.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+25-July-02 - (GDZ)
+
+use_chianti: Fixed a problem with IDL versions earlier than 5.3 (the routine
+             would not compile). ALso, introduced the use of concat_dir for 
+             cross-platform compatibility (GDZ)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+18-July-02 - GDZ
+
+get_contributions: fixed a  bug  (GDZ)
+use_chianti:   changed definition of the top directory.
+               This affects the location of the  Effective area files (GDZ)
+ch_synthetic:  Added a new keyword to be used for isothermal
+               (can output intensities as a function of T);
+               added a default definition of the EM values;
+               and made various minor modifications.
+              Also, now it prints an error message when the routine exits.
+              the Log EM values are assumed=0. if not defined (PRY-GDZ)
+isothermal:  Rewritten properly (PRY)
+plot_ioneq:  Added keywords ioneq_name, not_interactive (GDZ)
+plot_populations: Added keyword  not_interactive (GDZ)
+POP_SOLVER: removed ION keyword (PRY)
+ch_get_file: Added the option to select files also with the standard IDL
+             dialog_pickfile (GDZ)
+make_chianti_spec: 
+            changed the location of Effective area files (GDZ)
+ch_ss: 
+            changed the location of Effective area files
+            and added many new checks.  Rearranged the sizes of the buttons,
+            and added a special cursor to highlight the area where 
+            details of the lines will be given. Works only in linear scale
+            (GDZ)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+12-Jun-02 GDZ
+
+ratio_plotter: fixed a small bug (GDZ)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%  MAJOR CHANGES FOR VERSION 4  %%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+28-May-2002
+%%%%%%%%%%
+
+A large set of routines have been added. The  high-level ones are:
+
+
+ch_synthetic.pro
+-----------------
+
+ch_ss.pro 
+-----------------
+
+ch_line_list.pro
+-----------------
+
+make_chianti_spec.pro
+-----------------
+
+two_photon.pro 
+-----------------
+
+ch_read_fits
+-----------------
+
+ch_write_fits
+-----------------
+
+/extra/ratio_plotter.pro
+-----------------
+
+
+Other low-level routines added:
+
+/low_level/ch_check_str.pro
+/low_level/ch_drawbox.pro
+/low_level/ch_get_file.pro
+/low_level/ch_read_fits.pro
+/low_level/ch_write_fits.pro
+/low_level/ch_xmenu.pro
+/low_level/ch_xmenu_sel.pro
+/low_level/ch_xselect_s.pro
+/low_level/convert_terms.pro
+/low_level/descale_all.pro
+/low_level/get_atomic_weight.pro
+/low_level/hastogram.pro      (imported from PINT_of_ALE)
+/low_level/itoh.pro
+/low_level/mid2bound.pro      (imported from PINT_of_ALE)
+/low_level/proton_dens.pro
+/low_level/r2w.pro
+/low_level/sutherland.pro
+/low_level/w2r.pro
+/low_level/spectroscopic2ion
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+Most of the  low-level routines have also been modified.
+
+
+%%%%%%%%%  ROUTINES REMOVED  %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+/other/chianti_ss.pro
+-----------------
+
+   Is not distributed nor supported anymore. Is now replaced by ch_ss.pro 
+  Same for the low-level:
+
+/other/low_level/dmm_calc_spec.pro
+/other/low_level/gt_chianti.pro
+/extra/zion2name.pro
+/extra/choose_ioneq.pro
+/extra/get_prot_rates.pro
+/extra/processes.pro
+/extra/read_prot.pro
+/extra/read_splups_str.pro
+/extra/xuvtop_help.pro
+
+------------------------------------------------------
+ generalized directory concatenation to work for
+Unix, Windows  and VMS in the following routines:
+
+ratio_plotter, pop_plot, show_pops, emiss_calc.
+integral_calc,setup_ion,setup_elements,zion2filename,
+ion2filename,ch_get_file,calc_dmm_dr,density_ratios,
+freebound,gofnt,plot_populations,temperature_ratios,
+ch_ss,ch_line_list,two_photon , plot_ioneq, max_temp
+get_contributions, chianti_dem, g_of_t, read_ioneq
+read_dem, plot_dem,  proton_dens
+
+this was done removing  calls like  file=dir+'/'+name
+and removing 
+low_level/add_subdir.pro and replace the calls with concat_dir()
+
+------------------------------------------------------
+
+%%%%%%%%%   CHANGES TO EXISTING SOFTWARE %%%%%%%%%%%%%%%%%%%%%%%%%%
+
+ascii_wvl_dem.pro
+-----------------
+
+    1-Rewritten as a wrapper routine using the new procedures. 
+    2-Now the PRESSURE value is a keyword. 
+    3-The calculations can be done at constant DENSITY. 
+    4-Energies (keV) can be output instead of wavelengths in Angstroms 
+    5-MASTERLIST can now be used both as an input string or as a keyword. 
+
+calc_dmm_dr.pro
+-----------------
+
+   low-level routine called by chianti_ne.pro (slightly modified)
+   now uses emiss_calc.pro
+
+calc_dmm_tr.pro
+-----------------
+
+   low-level routine called by chianti_te.pro  now calls emiss_calc.pro
+
+chianti_ne      changed the way to deal with fonts.
+-------------
+
+chianti_te.pro  fixed a bug with the fonts 
+--------------
+
+
+density_ratios
+-----------------
+
+    1-Rewritten as a wrapper. 
+    2-Added keywords 
+
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+
+
+dens_plotter.pro
+-----------------
+
+    Is now a wrapper routine calling the widget RATIO_PLOTTER
+
+emiss_calc.pro 
+-----------------
+
+    A few keywords have been added/ modified, mainly as an update for V.4. 
+    Corrected a small bug about dielectronic lines.
+
+freebound.pro
+-----------------
+
+    Added the keyword 
+
+    PHOTONS (If set, intensities are in photons instead of ergs) 
+
+
+freefree
+-----------------
+
+    Re-written ex-novo. The previous version had a few bugs.
+    The call is the same as previously, but the calculations are now done 
+    using the fitting formulae of Itoh et al. (ApJS 128, 125, 2000) 
+    and Sutherland (MNRAS 300, 321, 1998). 
+
+get_contributions.pro
+-----------------
+
+   low-level routine called by chianti_dem.pro
+   re-written ex-novo (almost).
+
+
+gofnt.pro
+-----------------
+
+Aside from a few small fixes, these are the main changes: 
+
+    1-Rewritten as a wrapper routine using the new procedures. 
+    2-Added keywords 
+    ABUND_NAME, IONEQ_NAME,  to run the routine in the 
+                                       background, giving names of the
+                                       abundance and ionization
+                                       fractions files.
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+
+
+g_of_t.pro
+-----------------
+
+   A few keywords have been added/ modified, mainly as an update for V.4. 
+
+integral_calc.pro 
+-----------------
+
+   A few keywords have been added/ modified, mainly as an update for V.4. 
+
+
+isothermal.pro
+-----------------
+
+
+    1-Rewritten as a wrapper routine using the new procedures. 
+    2-Added keywords 
+    ABUND_NAME, IONEQ_NAME,  to run the routine in the 
+                                       background, giving names of the
+                                       abundance and ionization
+                                       fractions files.
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+    EM      Emission measure values.
+
+
+latex_wvl_dem.pro
+-----------------
+
+    1-Rewritten as a wrapper routine using the new procedures. 
+
+    2-Now the PRESSURE value is a keyword. 
+
+    3-The calculations can be done at constant DENSITY. 
+
+    4-MASTERLIST can now be used both as an input string or as a keyword. 
+
+
+plot_populations
+-----------------
+
+    1-Modified the plotting, adding information about the single lines. 
+    2-Added keywords 
+
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+
+pop_plot.pro
+-----------------
+
+   A few keywords have been added/ modified, mainly as an update for V.4. 
+
+rad_loss.pro
+-----------------
+
+    -Added keywords 
+
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+
+
+show_pops.pro 
+-----------------
+
+    A few keywords have been added/ modified, mainly as an update for V.4. 
+
+synthetic.pro
+-----------------
+
+    1-Rewritten as a wrapper routine using the new procedures. 
+
+    2-Now the PRESSURE value is a keyword as the DENSITY value 
+
+    3-The keyword CONT is now renamed CONTINUUM 
+
+    4-Added keywords 
+    PHOTONS   (If set, intensities are in photons instead of ergs)
+    DEM_NAME, ABUND_NAME, IONEQ_NAME,  to run the routine in the 
+                                       background, giving names of the
+                                       DEM, abundance and ionization
+                                       fractions files.
+    NOPROT (If set, then proton rates are not included.)
+    RADTEMP, RPHOT (to include photoexcitation)
+ 
+
+
+    5-MASTERLIST can now be used both as an input string or as a keyword. 
+
+    6-The description of the line details now has the spectroscopic designation at the end. 
+
+
+synthetic_plot.pro
+-----------------
+
+    Is left unchanged except for a few minor changes. 
+
+temp_plotter.pro
+-----------------
+
+    Is now a wrapper routine calling the widget RATIO_PLOTTER 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%
+ END OF V.4 CHANGES.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+17-Dec-01 freefree.pro
+Corrected for an error, a constant left out during the previous
+correction. 
+
+
+27-Nov-01 read_gffgu.pro
+Corrected the address of the gffgu.dat file
+
+
+10-Oct-01  freefree.pro
+Corrected for labelling errors in Sutherland's gffgu.dat file
+No longer reads ionization potential file
+
+10-Oct-01 read_gffgu.pro
+Corrected for the fact that the original Sutherland file was mislabelled.
+
+
+27-Dec-00  freefree.pro
+Changed 'switch' to 'tst1' for IDL v5.4
+
+21-Dec-2000  temperature_ratios.pro
+Modified for better cross-platform capability.
+
+21-Dec-2000 gofnt.pro
+Modified for better cross-platform capability.
+
+21-Dec-2000 density_ratios.pro
+Modified for better cross-platform capability.
+
+21-Dec-2000  rad_loss.pro
+Modified for better cross-platform capability.
+
+21-Dec-2000  plot_populations.pro
+Modified for better cross-platform capability.
+
