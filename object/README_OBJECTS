@@ -1,0 +1,27 @@
+Notes on how to use the CHIANTI object
+
+May 9, 2013
+
+This is currently underdevelopment and there is a lot of messy diagnostic output.
+
+there is only one Chianti object, 'chianti_ion' and several methods
+
+_____________________________________________________
+
+> ne9 = chianti_ion('ne_9')
+
+> temp = 10.^(6.3 + 0.1*findgen(11))
+
+> den = 1.e=9
+
+> ne9.populate,temp,den
+
+> population = ne9.getpopulation()
+
+	population is a structure, right now it contains a lot of extraneous information
+	
+> ne9.emiss_calc()
+
+> emiss = ne9.getemiss()
+
+	emiss is also a structure currently containing a lot of extraneous information
