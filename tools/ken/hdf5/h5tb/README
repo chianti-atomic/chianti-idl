@@ -1,0 +1,124 @@
+;-----------------------------------------------------------------------------
+; Title: wmb_lib HDF5 libraray
+;
+; Purpose: Reading/writing/modification of HDF5 tables in IDL.
+;
+; Description:  The wmb_hdf5* library implements the basic functions for 
+;               reading and writing HDF5 tables from IDL.  This library was
+;               created by porting the C code from the HDF5 distribution
+;               (H5TB.c, from HDF5 version 1.8.10) and modifying it to work 
+;               with the HDF5 API currently supported by IDL (as of IDL 
+;               version 8.2, most of the HDF5 version 1.6 API is supported).
+;           
+;       The C source code which this library is based on can be found
+;       at the following location:
+;       
+;       http://www.hdfgroup.org/ftp/HDF5/current/src/unpacked/hl/src/H5TB.c
+;
+;       By translating this code into IDL, the following functions were ported:
+;           
+;       Table creation:
+;       
+;           wmb_h5tb_make_table.pro
+;
+;       Storage:
+;       
+;           wmb_h5tb_append_records.pro
+;           wmb_h5tb_write_records.pro
+;           wmb_h5tb_write_fields_index.pro
+;           wmb_h5tb_write_fields_name.pro
+;           
+;       Retrieval: 
+;       
+;           wmb_h5tb_read_table.pro
+;           wmb_h5tb_read_records.pro
+;           wmb_h5tb_read_fields_index.pro
+;           wmb_h5tb_read_fields_name.pro
+;           
+;       Query:
+;       
+;           wmb_h5tb_get_table_info.pro
+;           wmb_h5tb_get_field_info.pro
+;           
+;       Modification:
+;       
+;           wmb_h5tb_insert_records.pro
+;           wmb_h5tb_add_records_from.pro
+;           wmb_h5tb_combine_tables.pro
+;
+; Limitations:
+;
+;       Several of the H5TB* functiions from the could not
+;       be ported, due to limitations of the current version of the 
+;       IDL HDF5 implementation.  These functions are listed below, 
+;       along with the reasons why they could not be ported.
+;       
+;       H5TB_delete_record:  Currently, IDL does not implement the
+;                            H5D_set_extent function, and therefore
+;                            there is no way to reduce the size of
+;                            an existing dataset.
+;
+;       H5TB_insert_field:   The version of H5D_write implemented by
+;       and                  IDL does not allow the specification of 
+;       H5TB_delete_field    a "write datatype id", which is required
+;                            to enable the selective writing of a subset
+;                            of the fields within a table.  Also, IDL does 
+;                            not allow the chunk dimensions and the 
+;                            compression state of an existing dataset 
+;                            to be queried.
+;           
+;       Finally, this library does not support fill values, since there
+;       is no way of specifying a fill value through the current HDF5
+;       API implemented by IDL.
+;       
+;       
+; Dependencies:
+; 
+;       The wmb_h5tb* library depends on the following procedures from 
+;       the wmb_lib:
+;       
+;           wmb_h5lt_find_attribute.pro
+;           wmb_h5lt_get_attribute.pro
+;           wmb_h5lt_set_attribute.pro
+;           wmb_h5o_open.pro
+;           wmb_h5o_close.pro
+;           wmb_compare_struct.pro
+;           
+;           
+; Defining the structure of an HDF5 table:
+;                                
+;       An HDF5 table can be thought of as a one-dimensional array of 
+;       structure variables.  The length of the table can be extended 
+;       up to an unlimited dimension.  
+;        
+;       Before creating an HDF5 table, its data structure must be
+;       defined.  This is done by creating a structure-type variable 
+;       which defines the datatype of each row of the table.
+;        
+;       The field names of this stucture variable are used to set the 
+;       field names of the table.  The data values of the structure 
+;       define the datatype of each table field.  Here we refer to this
+;       structure as the "record_definition" structure.
+;        
+;       String datatypes require special consideration.  At present, only
+;       fixed-length string types are supported in the wmb_h5tb* library.
+;       Therefore, if strings are to be stored in the table, the maximum
+;       string length for each field must be set when the table is created.  
+;       This is done by writing string data into the record definition 
+;       structure.  For each string field, a string value with a number
+;       of characters equal to the desired fixed length of the field is 
+;       assigned to the record definition structure. 
+;
+;
+; Browsing HDF5 table data:
+;       
+;       The built in IDL HDF5 browser (H5_BROWSER) is not capable of 
+;       displaying HDF5 tables.  Therefore, to view and edit the HDF5 
+;       tables users are encouraged to download HDFView, a free 
+;       Java-based HDF5 browser which is fully compatible with all 
+;       HDF5 files.  HDFView is available at the address below.
+;       
+;       http://www.hdfgroup.org/hdf-java-html/hdfview/
+;       
+; Version: 1.0, 14 May 2013, WMB
+;-----------------------------------------------------------------------------
