@@ -1,0 +1,154 @@
+
+; This is a simple README file with some examples on how to run the 
+; program.  Giulio Del Zanna, September 2015
+
+
+
+; The first time the routine is used, either a constant pressure or density
+; should be given. The routine then saves the G(T) into a file:
+
+chianti_dem,output='test',file_input='test_obs',$
+		   pressure=1.e15,cut_gt=1e-30,/plot_gt
+
+
+;	the G(T) (with MAX(G(T)) gt 1e-30)  are stored in the file
+;		'test.contributions'.
+
+; CASE 1), run the XRT_DEM  code:
+;---------------------------------
+
+chianti_dem,output='test',file_input='test_obs',$
+		file_gt='test.contributions', xrt_min_t=5.5,xrt_max_t=6.6
+
+
+; if you want to plot the results of the  XRT_DEM:
+
+restore, file='test_xrt_dem.save',/ver
+
+      x_min=min(logT_out)
+      x_max=max(logT_out)
+      y_min=min(log_dem_out)
+      y_max=max(log_dem_out)
+
+     plot,  logT_out, log_dem_out,$
+             xr=[x_min,x_max],yr=[y_min,y_max],$
+             xstyle=1,xtitle = ' log Teff [ !eo!nK ]',$
+             ytitle ='log DEM [ cm!S!E-5 !NK!S!E-1!N ] ',$
+             title='XRT DEM INVERSION TECHNIQUE'
+
+; over-plot the  observed/expected ratio * DEM at the effective temperature:
+
+n_obs=n_elements(obs_int)
+
+for iobs=0,n_obs-1 do begin
+         
+         point=spline(logT_out, log_dem_out), alog10(t_eff[iobs]))
+
+         oplot, alog10(t_eff[iobs]), alog10(obs_int[iobs]/exp_int[iobs]* 10.^point), psym=6
+
+         xyouts, alog10(t_eff[iobs]), alog10(obs_int[iobs]/exp_int[iobs]*$
+                                             10.^point[iobs]), $
+                 ' '+strtrim(obs_id[iobs],2), charsize=0.8, Orientation=90
+
+endfor
+
+; plot the  observed/expected ratio * DEM at the temperature of the maximum of the G(T):
+
+      plot,  logT_out, log_dem_out,$
+             xr=[x_min,x_max],yr=[y_min,y_max],$
+             xstyle=1,xtitle = ' log Tmax [ !eo!nK ]',$
+             ytitle ='log DEM [ cm!S!E-5 !NK!S!E-1!N ] ',$
+             title='XRT DEM INVERSION TECHNIQUE'
+
+for iobs=0,n_obs-1 do begin
+         
+         point[iobs]=spline(logT_out, log_dem_out), temp_max_tot_contr[iobs])
+
+         oplot, [temp_max_tot_contr[iobs]], [alog10(obs_int[iobs]/exp_int[iobs]* 10.^point)], psym=6
+
+         xyouts, temp_max_tot_contr[iobs], alog10(obs_int[iobs]/exp_int[iobs]*$
+                                             10.^point[iobs]), $
+                 ' '+strtrim(obs_id[iobs],2), charsize=0.8, Orientation=90
+
+endfor
+
+
+
+; if you have run the  XRT_DEM Monte Carlo simulations and want to plot them 
+; again, do:
+
+restore, file='test_xrt_dem.save',/ver
+sz=size(log_dem_mciter)
+MC_iter=sz[2]
+
+plot, logT_out,log_dem_out, psym=10,th=th, col=0,$
+       xr=[x_min,x_max],yr=[y_min,y_max],$
+             xstyle=1,xtitle = ' log T [ !eo!nK ]',$
+             ytitle ='log DEM [ cm!S!E-5 !NK!S!E-1!N ] ',ystyle=1,$
+      title='XRT DEM INVERSION TECHNIQUE'
+
+  for ii=0, MC_iter-1 do oplot, logT_out, log_dem_mciter[*,ii], th=th, col=100, psym=10
+  oplot, logT_out,log_dem_out, psym=10,th=th, col=0
+        
+
+
+; CASE 2)  run  DATA2DEM_REG 
+;----------------------------
+
+
+chianti_dem,output='test',file_input='test_obs',$
+               file_gt='test.contributions',/do_demreg,demreg_logt_min=5.5,$ 
+               demreg_logt_max=6.6, nt_demreg=20 
+
+; plot the regularized DEM and both vertical and horizontal errors
+
+restore, file='test_demreg.save'
+
+     x_min=min(reg.logt)
+      x_max=max(reg.logt)
+      y_min=2d19
+      y_max=2d23
+
+      ploterr,reg.logt,reg.dem_pos,reg.elogt_pos,reg.edem_pos,$
+              /nohat,errcolor=9,  xr=[x_min,x_max],yr=[y_min,y_max],$
+             xstyle=17,ystyle=17,/ylog, title='Regularized DEM', $
+              xtitle='log!D10!N T',ytitle='DEM(T) [cm!U-5!N K!U-1!N]'
+
+
+; CASE 3)  run  MCMC_DEM
+;-------------------------------------------
+
+ chianti_dem,output='test',file_input='test_obs',$
+               file_gt='test.contributions', /do_mcmc, mcmc_logt_step=0.1,$
+               mcmc_logt_max=6.6, mcmc_logt_min=5.5
+
+
+restore, file='test_mcmc.save',/ver
+restore, file='test_mcmc2.save',/ver
+
+; Plot the DEM and the observed/expected ratio * DEM at the effective temperature:
+
+      x_min=min(logt_grid)
+      x_max=max(logt_grid)
+      y_min=min(alog10(dem_out))
+      y_max=max(alog10(dem_out))
+
+ plot,  logt_grid, alog10(dem_out),$
+                xr=[x_min,x_max],yr=[y_min,y_max],$
+                xstyle=1,xtitle = ' log Teff [ !eo!nK ]',$
+                ytitle ='log DEM [ cm!S!E-5 !NK!S!E-1!N ] ',$
+                title='MCMC DEM INVERSION TECHNIQUE', psym=10
+
+
+        for iobs=0,n_elements(obs_int)-1 do begin         &$   
+            point=spline(logt_grid, alog10(dem_out), alog10(t_eff[iobs]))  &$          
+         oplot, [alog10(t_eff[iobs])], [alog10(obs_int[iobs]/exp_int[iobs]* 10.^point)], psym=6 &$        
+    xyouts, alog10(t_eff[iobs]), alog10(obs_int[iobs]/exp_int[iobs]*10.^point), $
+                    ' '+strtrim(obs_id[iobs],2), charsize=0.8, Orientation=90 &$
+ end 
+
+;---------------------------------------------------------------------------------
+; If you want to use mcmc_plot instead please read the Pint_of_Ale documentation.
+
+ 
+
