@@ -524,13 +524,16 @@
 ;          of the zeros from the wavelength range text boxes.
 ;       V.19, 25-Sep-2020, Peter Young
 ;          Fixed bug when $CHIANTI_LOOKUP not defined.
+;       V.20, 19-Nov-2020, Peter Young
+;          Modified behavior when switching to log plots to better
+;          display the spectrum.
 ;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.19, 25-Sep-2020
+; VERSION     :  V.20, 19-Nov-2020
 ;
 ;-
 PRO restore_spectrum
@@ -1199,17 +1202,27 @@ ytitle = str_replace(ytitle,'-2', '!U-2!N')
 ytitle = str_replace(ytitle,'-3', '!U-3!N')
 
 
-IF log THEN plot_io, spectrum.lambda, spectrum.spectrum,psym=10, $
-  xmargin=[15,4], $
-  xsty=1,xrange=xrange,yrange=[1e-10 > yrange(0), yrange(1)],ysty=1, $
-  xticklen=-0.025, $
-  ytitle=ytitle,xtitle=xtitle, title='CHIANTI - Version '+spectrum.version ELSE $
-  plot, spectrum.lambda, spectrum.spectrum,psym=10, $
-  xmargin=[15,4], $
-  xsty=1,xrange=xrange,yrange=yrange,ysty=1, $
-  xticklen=-0.025,yticklen=-0.015, $
-  ytitle=ytitle,xtitle=xtitle, title='CHIANTI - Version '+spectrum.version
-
+IF log THEN BEGIN
+  ;
+  ; PRY, 19-Nov-2020: added the following to make log plots display
+  ; better.
+  ;
+   IF yrange[0] EQ 0. THEN BEGIN
+      yrange[0]=min(spectrum.spectrum)
+      widget_control,state.ymin_base,set_value=string(format='(e9.2)',yrange[0])
+   ENDIF 
+   plot_io, spectrum.lambda, spectrum.spectrum,psym=10, $
+            xmargin=[15,4], $
+            xsty=1,xrange=xrange,yrange=[1e-10 > yrange(0), yrange(1)],ysty=1, $
+            xticklen=-0.025, $
+            ytitle=ytitle,xtitle=xtitle, title='CHIANTI - Version '+spectrum.version
+ENDIF ELSE BEGIN 
+   plot, spectrum.lambda, spectrum.spectrum,psym=10, $
+         xmargin=[15,4], $
+         xsty=1,xrange=xrange,yrange=yrange,ysty=1, $
+         xticklen=-0.025,yticklen=-0.015, $
+         ytitle=ytitle,xtitle=xtitle, title='CHIANTI - Version '+spectrum.version
+ENDELSE 
 
 ;xyouts some precious information
 
@@ -3256,6 +3269,12 @@ CASE 1 OF
       ENDIF ELSE IF log EQ 1 THEN BEGIN 
          WIDGET_CONTROL,state.log_lin_info,set_value='Lin [/Log]'
          log = 0
+        ;
+        ; PRY, 19-Nov-2020: the following resets yrange[0] to 0 when
+        ; switching from the log plot.
+        ;
+         yrange[0]=0.
+         widget_control,state.ymin_base,set_value=string(format='(e9.2)',yrange[0])
       END 
       plot_syn_spectrum
    END 

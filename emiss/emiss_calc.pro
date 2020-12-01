@@ -103,10 +103,11 @@
 ;       NOPROT  If set, then the default setting will be NOT to use 
 ;               proton rates. This can be changed within the routine.
 ;
-;	QUIET	If set, don't list the temperatures and densities at which 
-;		the emissivities are caculated.
+;	QUIET	This keyword has been disabled as the routine is now
+;       	quiet by default. Please use /VERBOSE to print
+;       	information messages.
 ;
-;       DIEL   If the dielectronic recombination files exist for the ion, 
+;       DIEL    If the dielectronic recombination files exist for the ion, 
 ;               then these are used to derive the emissivities.
 ;
 ;       NO_SETUP  If emiss_calc is called from a routine where the ELEMENTS
@@ -120,6 +121,7 @@
 ;                rates are not read for the ion, even if they exist.
 ;       NO_RREC: If set, do not read the level-resolved radiative
 ;                recombination (RR) files.
+;       VERBOSE: If set, then print information messages to the screen.
 ;
 ;
 ; OUTPUT:
@@ -254,8 +256,12 @@
 ;
 ;       v.38   5 Dec 2018 GDZ revised handling of pop_solver.
 ;       v.39   14-Dec-2018 GDZ, added NOIONREC, NO_RREC keywords.
+;       v.40, 19-Nov-2020, Peter Young
+;           Added keyword /VERBOSE and disabled /QUIET so that routine
+;           no longer prints information to the IDL window (unless you
+;           ask for it).
 ;
-; VERSION     :   39
+; VERSION     :   40
 ;
 ;-
 
@@ -266,7 +272,7 @@ FUNCTION  EMISS_CALC, IZ, ION, TEMP=TEMP, DENS=DENS, RADTEMP=RADTEMP, $
                       IONEQ_FILE=IONEQ_FILE, ABUND_FILE=ABUND_FILE, $
                       NO_SETUP=NO_SETUP, SUM_MWL_COEFFS=SUM_MWL_COEFFS, $
                       RADFUNC=RADFUNC, NO_CALC=NO_CALC, noionrec=noionrec, $
-                      no_rrec=no_rrec
+                      no_rrec=no_rrec, verbose=verbose
 
 
 
@@ -274,14 +280,15 @@ FUNCTION  EMISS_CALC, IZ, ION, TEMP=TEMP, DENS=DENS, RADTEMP=RADTEMP, $
 IF N_PARAMS() LT 1 THEN BEGIN
    PRINT,'Use:  IDL> emiss=emiss_calc(iz,ion [, temp=temp, dens=dens, '
    PRINT,'                              radtemp=radtemp, rphot=rphot, /no_de,'
-   PRINT,'                              path=path, /noprot, /quiet, $ '
+   PRINT,'                              path=path, /noprot, $ '
    PRINT,'                              pressure=pressure, ioneq_file=ioneq_file, $'
-   print,'                              abund_file=abund_file, /no_calc ] )'
+   print,'                              abund_file=abund_file, /no_calc, /verbose ] )'
    RETURN,0
 ENDIF
 
 
-IF  KEYWORD_SET(quiet) THEN verbose=0 else verbose=1
+quiet=1b-keyword_set(verbose)
+;IF  KEYWORD_SET(quiet) THEN verbose=0 else verbose=1
 
 ;
 ; PRY, 26-Jan-2018

@@ -90,6 +90,10 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
 ;     Ver.8, 28-Oct-2020, Peter Young
 ;         Uses file_modtime to make sure that the modification time of
 ;         the hdf5 and fits files is later than the ascii file.
+;     Ver.9, 23-Nov-2020, Peter Young
+;         Replaced call to file_modtime with file_info (since
+;         _modtime only introduced in IDL 8.5.1). Added some
+;         additional information messages.
 ;-
 
 
@@ -108,8 +112,7 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
      print,'% READ_SCUPS: the file was not found. Returning...'
      return
   ENDIF 
-  
-  mtime_ascii=file_modtime(splfile)
+  mtime_ascii=chck.mtime
   
   splfile_fits=splfile+'.fits.gz'
   splfile_h5=splfile+'.h5'
@@ -123,7 +126,7 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
            print,'% READ_SCUPS: hdf5 file not found; reading the ascii file ('+file_basename(splfile)+').'
            spl_opt=0
         ENDIF ELSE BEGIN 
-           mtime_h5=file_modtime(splfile_h5)
+           mtime_h5=chck.mtime
            IF mtime_h5 LT mtime_ascii THEN BEGIN
               print,'% READ_SCUPS: hdf5 file needs updating so reading ascii file instead ('+file_basename(splfile)+').'
               spl_opt=0
@@ -137,7 +140,7 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
            print,'% READ_SCUPS: fits file not found; reading the ascii file ('+file_basename(splfile)+').'
            spl_opt=0
         ENDIF ELSE BEGIN 
-           mtime_fits=file_modtime(splfile_fits)
+           mtime_fits=chck.mtime
            IF mtime_fits LT mtime_ascii THEN BEGIN
               print,'% READ_SCUPS: fits file needs updating so reading ascii file instead ('+file_basename(splfile)+').'
               spl_opt=0
@@ -160,7 +163,8 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
        ;
         if keyword_set(verbose) then begin 
            t2=systime(/sec)
-           print,splfile+', seconds:', string(format='(f8.3)',t2-t1)
+           print,'% READ_SCUPS: the scups FITS file was read.'
+           print,'% READ_SCUPS: '+splfile+', seconds:', string(format='(f8.3)',t2-t1)
         endif 
         return
      END
@@ -172,8 +176,9 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
         splstr={info:st.scups._data.info, data:st.scups._data.data}
         delvarx,st
         if keyword_set(verbose) then begin 
+           print,'% READ_SCUPS: the HDF5 scups file was read.'
            t2=systime(/sec)
-           print,splfile+', seconds:', string(format='(f8.3)',t2-t1)
+           print,'% READ_SCUPS: '+splfile+', seconds:', string(format='(f8.3)',t2-t1)
         endif 
         return
      END
@@ -344,8 +349,9 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
 
 
   if keyword_set(verbose) then begin 
+     print,'% READ_SCUPS: the ASCII scups file was read.'
      t2=systime(/sec)
-     print,splfile+', seconds:', string(format='(f8.3)',t2-t1)
+     print,'% READ_SCUPS: '+splfile+', seconds:', string(format='(f8.3)',t2-t1)
   endif 
 
 END

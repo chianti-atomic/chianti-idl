@@ -258,6 +258,11 @@ PRO pop_solver, input, t, xne, pop,  data_str=data_str, $
 ;            For 2-ion models, now check if the recombining ion
 ;            actually has data. If not, then proceed with single-ion
 ;            model (fixes problem with ti_21 & ti_22).
+;      v.10, 13-Nov-2020, Peter Young
+;            For v.9 change, only print the warning message if
+;            /verbose set.
+;      v.11, 19-Nov-2020, Peter Young
+;            Bug in computing routine run time has been corrected.
 ;-
 
 IF n_params() LT 4 THEN BEGIN
@@ -268,7 +273,7 @@ IF n_params() LT 4 THEN BEGIN
    return
 ENDIF 
 
-t0=systime(1)
+time0=systime(1)
 
   if n_elements(verbose) eq 0 then verbose=0
 
@@ -332,7 +337,7 @@ IF tag_exist(rates1.ion_data,'autostr') AND NOT keyword_set(no_auto) THEN BEGIN
  ; to single-ion case.
  ;
   if is_number(rates2) then begin 
-     print, '% POP_SOLVER: no data available for recombining ion ('+input.gname+'). '
+     IF keyword_set(verbose) THEN print, '% POP_SOLVER: no data available for recombining ion ('+input.gname+'). '
      rates=rates1
   endif ELSE BEGIN 
      nlev2=rates2.n_levels
@@ -510,8 +515,9 @@ ENDIF
 out_rates=temporary(rates)
 
 
-t1=systime(1)
+time1=systime(1)
 
-IF keyword_set(verbose) THEN print,'% POP_SOLVER: calculation took '+trim(string(format='(f10.2)',t1-t0))+' seconds ('+input.gname+').'
+
+IF keyword_set(verbose) THEN print,'% POP_SOLVER: calculation took '+trim(string(format='(f10.2)',time1-time0))+' seconds ('+input.gname+').'
 
 END 

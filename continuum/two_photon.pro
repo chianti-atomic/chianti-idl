@@ -107,6 +107,10 @@
 ;	NO_SETUP:   This keyword is obsolete now. Retained for
 ;	            backwards compatibility.
 ;
+;       LOOKUP:  If set, then the CHIANTI lookup tables (stored in
+;                $CHIANTI_LOOKUP) are used to compute the level
+;                populations. This greatly speeds up the calculation.
+;
 ; OUTPUTS:
 ;
 ;	RAD   2 photon continuum intensity in units of
@@ -259,7 +263,13 @@
 ;            The upper levels of the two-photon transitions are no
 ;            longer hard-coded. Instead they are accessed through the
 ;            two_photon tag of the ch_setup_ion output.
+;
+;       v.25, 16-Nov-2020, Peter Young
+;            The /lookup option has been implemented; fixed a minor
+;            bug whereby the 2-photon level was hard-coded to index 3
+;            when computing the transition energy.
 ;-
+
 pro two_photon,temperature,wvl,rad, no_setup=no_setup, $
                min_abund=min_abund, masterlist=masterlist, $
                sngl_ion=sngl_ion, sumt=sumt, dem_int=dem_int, $
@@ -267,7 +277,7 @@ pro two_photon,temperature,wvl,rad, no_setup=no_setup, $
                kev=kev, em_int=em_int, $
                abund_file=abund_file, ioneq_file=ioneq_file, $
                h_rad=h_rad, he_rad=he_rad, $
-               element=element
+               element=element, lookup=lookup
                
 
 
@@ -277,9 +287,10 @@ if n_params(0) lt 3 then begin
    print,'               ,masterlist= , sngl_ion= , edensity=, '
    print,'               /verbose, /kev, /photons, em_int=, $'
    print,'               ioneq_file=, abund_file=, h_rad=, he_rad= $'
-   print,'               element= ]'
+   print,'               element=, /lookup ]'
    return
 endif
+
 
 t1=systime(1)
 
@@ -325,6 +336,7 @@ ENDIF ELSE BEGIN
 ENDELSE
 
 
+
 IF keyword_set(no_setup) THEN BEGIN
   print,'% TWO_PHOTON: the keyword /no_setup is obsolete now. Please check the routine header.'
 ENDIF 
@@ -361,6 +373,7 @@ ENDIF
 
 IF n_elements(edensity) EQ 1 THEN edens=dblarr(nt)+edensity $
 ELSE edens=edensity
+
 
 ;
 ; DEM_INT and EM_INT implementation
@@ -528,6 +541,7 @@ for ilist=0,nlist-1 do begin
                ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
                ioneq1=10.^ioneq1
                temps=temperature[t_ind]
+               nt=n_elements(temps)
             ENDIF ELSE BEGIN
                ioneq1=0.
             ENDELSE
@@ -540,32 +554,57 @@ for ilist=0,nlist-1 do begin
                                 ;
          if ioneqtest then BEGIN
                                 ;
-           input=ch_setup_ion(gname,ioneq_file=ioneq_file,abund_file=abund_file,/quiet)
-           ecm=input.ecm
-           two_photon=input.two_photon
-           
-           wvl0=1.d+8/(ecm(1)-ecm(0))
+            lookup_swtch=0b
+            IF keyword_set(lookup) THEN BEGIN
+               r=ch_lookup_table_interp(gname,edens[t_ind],temps,/quiet)
+               IF n_tags(r) NE 0 THEN BEGIN
+                  lookup_swtch=1b
+                  popx=r.pop
+                 ;
+                  convertname,gname,iz,ion,diel=diel
+                  zion2filename,iz,ion,basename,diel=diel
+                  read_wgfa_str,basename+'.wgfa',wgfa,two_photon=two_photon
+                  read_elvlc,basename+'.elvlc',elvlc=elvlc
+                  ecm=elvlc.data.energy
+               ENDIF
+            ENDIF
+           ;
+           ; If /lookup isn't set, or it didn't work, then use
+           ; pop_solver.
+           ;
+            IF lookup_swtch EQ 0 THEN BEGIN 
+               input=ch_setup_ion(gname,ioneq_file=ioneq_file,abund_file=abund_file,/quiet)
+               ecm=input.ecm
+               two_photon=input.two_photon
+            ENDIF
+
+            pop_idx=two_photon.lvl-1
+
+            wvl0=1.d+8/(ecm(pop_idx)-ecm(0))
             w_ind = where(wvl gt wvl0,wvltest)
                                 ;
             if wvltest gt 0 AND n_tags(two_photon) NE 0 then begin
-               pop_idx=two_photon.lvl-1
 
                y=wvl0/wvl[w_ind]
 
                y2=spl_init(y0,psi0[*,iz-1])
                distr=y*spl_interp(y0,psi0[*,iz-1],y2,y)/asum[iz-1]/wvl[w_ind]
 
-               nt=n_elements(temps)
                FOR i=0,nt-1 DO BEGIN
-                 pop_solver,input, temps[i],edens[t_ind[i]],pop
+                  IF lookup_swtch EQ 0 THEN BEGIN
+                     pop_solver, input, temps[i],edens[t_ind[i]],pop
+                  ENDIF ELSE BEGIN
+                     pop=reform(popx[i,i,*])   ; popx from lookup table.
+                  ENDELSE 
+
                   IF keyword_set(photons) THEN BEGIN
                      distr1=rescale/4d0/!pi*avalue[iz-1]*this_abund* $
-                       distr * $
-                       (ioneq1[i]*pop[pop_idx]/edens[t_ind[i]]) * dem_arr[t_ind[i]]
+                            distr * $
+                            (ioneq1[i]*pop[pop_idx]/edens[t_ind[i]]) * dem_arr[t_ind[i]]
                   ENDIF ELSE BEGIN
                      distr1=rescale*factor*1d8*avalue[iz-1]*this_abund* $
-                       (distr/wvl[w_ind]) * $
-                       (ioneq1[i]*pop[pop_idx]/edens[t_ind[i]]) * dem_arr[t_ind[i]]
+                            (distr/wvl[w_ind]) * $
+                            (ioneq1[i]*pop[pop_idx]/edens[t_ind[i]]) * dem_arr[t_ind[i]]
                   ENDELSE
                   h_rad[w_ind,t_ind[i]]=h_rad[w_ind,t_ind[i]]+distr1
                ENDFOR
@@ -641,6 +680,7 @@ for ilist=0,nlist-1 do BEGIN
                ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
                ioneq1=10.^ioneq1
                temps=temperature[t_ind]
+               nt=n_elements(temps)
             ENDIF ELSE BEGIN
                ioneq1=0.
             ENDELSE
@@ -652,25 +692,55 @@ for ilist=0,nlist-1 do BEGIN
                                 ;
                                 ;
          if ioneqtest then BEGIN
-            input=ch_setup_ion(gname,ioneq_file=ioneq_file,abund_file=abund_file,/quiet)
-            ecm=input.ecm
-            two_photon=input.two_photon
+           ;
+           ; Check if /lookup set, and make sure a structure is
+           ; returned.
+           ;
+            lookup_swtch=0b
+            IF keyword_set(lookup) THEN BEGIN
+               r=ch_lookup_table_interp(gname,edens[t_ind],temps,/quiet)
+                IF n_tags(r) NE 0 THEN BEGIN
+                  lookup_swtch=1b
+                  popx=r.pop
+                 ;
+                  convertname,gname,iz,ion,diel=diel
+                  zion2filename,iz,ion,basename,diel=diel
+                  read_wgfa_str,basename+'.wgfa',wgfa,two_photon=two_photon
+                  read_elvlc,basename+'.elvlc',elvlc=elvlc
+                  ecm=elvlc.data.energy
+               ENDIF
+            ENDIF
+           ;
+           ; If /lookup isn't set, or it didn't work, then use
+           ; pop_solver.
+           ;
+            IF lookup_swtch EQ 0 THEN BEGIN 
+               input=ch_setup_ion(gname,ioneq_file=ioneq_file,abund_file=abund_file,/quiet)
+               ecm=input.ecm
+               two_photon=input.two_photon
+            ENDIF
 
-            wvl0=1.d+8/(ecm(2)-ecm(0))
+           ;
+            pop_idx=two_photon.lvl-1
+           
+            wvl0=1.d+8/(ecm(pop_idx)-ecm(0))
             w_ind = where(wvl gt wvl0,wvltest)
 
             if wvltest gt 0 AND n_tags(two_photon) NE 0 then begin
 
-               pop_idx=two_photon.lvl-1
-               
                y=wvl0/wvl[w_ind]
 
                y2=spl_init(y0,psi0[*,iz-1])
                distr=y*spl_interp(y0,psi0[*,iz-1],y2,y)/wvl[w_ind]
 
-               nt=n_elements(temps)
                FOR i=0,nt-1 DO BEGIN
-                  pop_solver, input, temps[i],edens[t_ind[i]],pop
+
+                  IF lookup_swtch EQ 0 THEN BEGIN
+                     pop_solver, input, temps[i],edens[t_ind[i]],pop
+                  ENDIF ELSE BEGIN
+                     pop=reform(popx[i,i,*])   ; popx from lookup table.
+                  ENDELSE 
+                 ;
                   IF keyword_set(photons) THEN BEGIN
                      distr1=rescale/4d0/!pi*avalue[iz-1]*this_abund* $
                        distr * $

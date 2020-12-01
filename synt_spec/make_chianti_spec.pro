@@ -4,7 +4,7 @@ PRO make_chianti_spec, TRANSITIONS, LAMBDA, OUTPUT, BIN_SIZE=BIN_SIZE,  $
         ABUND_NAME=ABUND_NAME, MIN_ABUND=MIN_ABUND, $
         photons=photons, file_effarea=file_effarea, $
         err_msg=err_msg,  verbose=verbose, kev=kev, $
-        no_thermal_width=no_thermal_width
+        no_thermal_width=no_thermal_width, lookup=lookup
 
 on_error,0
 ;+
@@ -180,6 +180,9 @@ on_error,0
 ;                       emission line will be concentrated in a
 ;                       single pixel within the spectrum.
 ;
+;     LOOKUP:   This keyword is passed on to two_photon in order to
+;               speed the calculation
+;
 ; CALLS       : 
 ;		
 ;		PRY:     	GET_ATOMIC_WEIGHTS
@@ -334,7 +337,10 @@ on_error,0
 ;
 ;               v.30, 11-Mar-2020, Peter Young
 ;                 Added ioneq_file= and abund_file= in call to
-;                 freebound. 
+;                 freebound.
+;
+;               v.31, 17-Nov-2020, Peter Young
+;                 Added keyword /lookup.
 ;-
 
 
@@ -345,7 +351,7 @@ IF  n_params() lt 3 then begin
    print,' type> make_chianti_spec, output_struct,  LAMBDA, SPECTRUM,$ '
    print,'         [BIN_SIZE= , KEV= ,INSTR_FWHM= , PIXEL=PIXEL, $'
    print,'       WRANGE= , ALL=ALL, continuum=continuum, $'
-   print,'     ABUND_NAME= , MIN_ABUND=, BINSIZE = BINSIZE effarea=] '
+   print,'     ABUND_NAME= , MIN_ABUND=, BINSIZE = BINSIZE effarea=, /LOOKUP] '
 END
 
 
@@ -986,7 +992,7 @@ IF KEYWORD_SET(continuum) THEN BEGIN
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, dem_int=dem_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, abund_file=abund_name, $
-                  ioneq_file=ioneq_name
+                  ioneq_file=ioneq_name, lookup=transitions.lookup
 
    ENDIF   ELSE BEGIN 
 
@@ -1021,7 +1027,7 @@ IF KEYWORD_SET(continuum) THEN BEGIN
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, em_int=em_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, ioneq_file=ioneq_name, $
-                  abund_file=abund_name
+                  abund_file=abund_name, lookup=transitions.lookup
 
    ENDELSE 
 
