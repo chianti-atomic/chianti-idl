@@ -24,9 +24,10 @@ PRO cit_chianti_html, ads_data, outdir=outdir
 ;	
 ; OUTPUTS:
 ;     Creates the webpages 'chianti_ADS.html' and
-;     'citation_list.html', and the image 'chianti_cit_year.png'. By
-;     default it places them in ~/chianti_repository/web/trunk, but
-;     this can be changed by setting OUTDIR.
+;     'citation_list.html', and the image 'chianti_cit_year.png'. If
+;     the environment variable $CHIANTI_WEB is defined then the files
+;     go there. If OUTDIR= is specified, then they go there. Otherwise
+;     they go in the working directory.
 ;
 ; OPTIONAL OUTPUTS:
 ;     Ads_Data:  The structure containing information about all the
@@ -39,18 +40,33 @@ PRO cit_chianti_html, ads_data, outdir=outdir
 ; 
 ; EXAMPLE:
 ;     IDL> cit_chianti_html
+;     IDL> cit_chianti_html, ads_data
+;     IDL> cit_chianti_html, outdir='~/my_dir'
 ;
 ; MODIFICATION HISTORY:
 ;     Ver.1, 17-Sep-2019, Peter Young
+;     Ver.2, 01-Dec-2020, Peter Young
+;         Now writes files to $CHIANTI_WEB (if defined) by
+;         default. Otherwise written to working directory.
 ;-
 
 
-IF n_elements(outdir) EQ 0 THEN BEGIN 
-  outdir='~/chianti_repository/web/trunk'
+IF n_elements(outdir) EQ 0 THEN BEGIN
+   outdir=getenv('CHIANTI_WEB')
+   IF outdir EQ '' THEN BEGIN
+      print,'% CIT_CHIANTI_HTML: the environment variable $CHIANTI_WEB is not defined. Files will be written '
+      print,'                    to the current working directory.'
+   ENDIF ELSE BEGIN
+      print,'% CIT_CHIANTI_HTML: files will be written to '+expand_path(outdir)+'.'
+   ENDELSE 
 ENDIF ELSE BEGIN
-  chck=file_info(outdir)
-  IF chck.exists EQ 0 THEN file_mkdir,outdir
+   chck=file_info(outdir)
+   IF chck.exists EQ 1 THEN BEGIN
+      print,'% CIT_CHIANTI_HTML: outdir does not exist so it will be created.'
+      file_mkdir,outdir
+   ENDIF 
 ENDELSE 
+
 
 ads_data=cit_chianti_citing_papers(tot_cit=tot_cit)
 
