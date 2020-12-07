@@ -146,7 +146,8 @@ PRO integral_calc, ionname, spect_num, ioneq_file=ioneq_file, quick=quick, $
 ;
 ; CALLS:
 ;
-;	EMISS_CALC, CH_GET_FILE, READ_IONEQ, GET_IEQ
+;	EMISS_CALC, CH_GET_FILE, READ_IONEQ, GET_IEQ, PROTON_DENS,
+;       READ_ABUND 
 ;
 ; HISTORY:
 ;
@@ -188,10 +189,11 @@ PRO integral_calc, ionname, spect_num, ioneq_file=ioneq_file, quick=quick, $
 ;              and earlier. I now correctly compute the H-to-e ratio
 ;              rather than just assume 0.83.
 ;
-; VERSION     :   11, 27-Mar-2013
+;       V.12, 07-Dec-2020, Peter Young
+;              Added ioneq_file and abund_file inputs to proton_dens,
+;              allowing me to remove the common block.
 ;-
 
-COMMON elements, abund, abund_ref, ioneq, temp_all, ioneq_ref
 
 
 IF N_PARAMS() LT 1 THEN BEGIN
@@ -386,7 +388,7 @@ ENDCASE
 ;
 ; compute H to electron ratio
 ;
-h_rat=proton_dens(ion_t,/hydrogen)
+h_rat=proton_dens(ion_t,/hydrogen, abund_file=abund_file, ioneq_file=ioneq_file)
 y2=spl_init(ion_t,h_rat)
 h_to_e_ratio=spl_interp(ion_t,h_rat,y2,tempi)
 

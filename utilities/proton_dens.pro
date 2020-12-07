@@ -1,16 +1,19 @@
 ;+
-; NAME
-;
+; NAME:
 ;    PROTON_DENS()
 ;
-; EXPLANATION
-;
+; PURPOSE:
 ;    Calculates the ratio of the proton density to electron density using 
 ;    abundance and ion balance files.
 ;
-; INPUTS
+; CATEGORY:
+;    CHIANTI; protons.
 ;
-;    TEMP    The logarithm (base 10) of the temperature(s) for which the 
+; CALLING SEQUENCE:
+;    Result = PROTON_DENS( Log_Temp )
+;
+; INPUTS:
+;    Temp:   The logarithm (base 10) of the temperature(s) for which the 
 ;            ratio is required. Can be an array.
 ;
 ; OPTIONAL INPUTS:
@@ -20,43 +23,46 @@
 ;    Ioneq_file:   The name of an ionization fraction file, in CHIANTI
 ;                  format. This over-rides (and replaces) any
 ;                  ion fractions in the common block.
+;	
+; KEYWORD PARAMETERS:
+;    HYDROGEN: If set then the routine computes the ratio of hydrogen to 
+;              free electrons.
+;    QUIET:  If set, then information messages will not be printed to
+;            the IDL window.
 ;
-; OUTPUT
+; OUTPUTS:
+;    An array of same size as TEMP containing the proton-to-electron
+;    ratio. If /hydrogen is set, then the hydrogen-to-electron ratio
+;    is returned. If a problem is found, then a value of -1 is
+;    returned. 
 ;
-;    An array of same size as TEMP containing the proton-to-electron ratio.
-;
-; KEYWORDS
-;
-;    HYDROGEN If set then the routine computes the ratio of hydrogen to 
-;             free electrons.
-;
-; CALLS
-;
+; CALLS:
 ;    READ_IONEQ, READ_ABUND
 ;
-; COMMON BLOCKS
+; PROGRAMMING NOTES:
+;    The proton/electron ratio is computed using the ionization
+;    fractions (ioneq) and the element abundance (abund) file. If the
+;    names of these files are not specified, then !ioneq_file and
+;    !abund_file are used.
 ;
-;    ELEMENTS
+;    It is possible to input the ioneq and abund information through
+;    the common block, but this is not recommended.
 ;
-; PROGRAMMING NOTES
-;
-;    To work out the proton/electron ratio, an ion balance and abundance 
-;    file are required. These can be specified through the common block, 
-;    otherwise the default files are assumed (!ioneq_file and !abund_file).
-;
-;    Because the ion balance data is tabulated only for logT from 4.0 to 
-;    8.0, the proton/electron ratio can only be calculated for this range. 
-;    Above and below these temperatures, the values at 8.0 and 4.0 are 
-;    assumed, respectively.
-;
+;    If a temperature is requested that is outside the range of
+;    validity of the ioneq file, then the values at the ends of the
+;    range will be returned.
 ;
 ;    I've added a check to see if the temperatures are tabulated at 0.1 
 ;    dex intervals (e.g., 4.0, 4.1, etc.). If they are, then a quicker 
 ;    algorithm is used to calculate p/e ratios. This is useful for 
 ;    synthetic.pro.
 ;
-; HISTORY
+; EXAMPLE:
+;    IDL> log_temp=findgen(41)/10.+4.0
+;    IDL> np_ne=proton_dens(log_temp)
+;    IDL> nh_ne=proton_dens(log_temp,/hydrogen)
 ;
+; MODIFICATION HISTORY:
 ;    Ver.1, 5-Dec-2001, Peter Young
 ;
 ;    Ver.2, 3-Dec-2001, Peter Young
@@ -66,20 +72,28 @@
 ;                  generalize directory concatenation to work for Unix, Windows
 ;                  and VMS.
 ;
-;       V.4, 06-Aug-02 GDZ
+;    V.4, 06-Aug-02 GDZ
 ;              Changed the use of CHIANTI system variables.
 ;
 ;    Ver.5, 16-Aug-2016, Peter Young
 ;              Introduced IONEQ_FILE and ABUND_FILE optional inputs.
-;   
-; VERSION     : 5, 16-Aug-2016
-;
+;    Ver.6, 07-Dec-2020, Peter Young
+;       Added check on input parameters; removed the common block;
+;       updated header; added /quiet keyword.
 ;-
+
+
 FUNCTION  proton_dens, temp, hydrogen=hydrogen, abund_file=abund_file, $
-                       ioneq_file=ioneq_file
+                       ioneq_file=ioneq_file, quiet=quiet
 
-common elements,abund,abund_ref,ioneq,ioneq_logt,ioneq_ref
 
+IF n_params() LT 1 THEN BEGIN
+   print,'Use:  IDL> p_e=proton_dens( log_temp [, /hydrogen, abund_file=, ioneq_file=, /quiet ] )'
+   print,''
+   print,'   Returns the proton-to-electron ratio for specified temperatures.'
+   print,'     /hydrogen  - used to return hydrogen-to-electon ratio'
+   return,-1
+ENDIF 
 
 ;
 ; The logic below is as follows:
@@ -98,7 +112,7 @@ IF count GT 0 THEN BEGIN
 ENDIF ELSE BEGIN
   IF n_elements(abund) EQ 0 THEN BEGIN
     read_abund, !abund_file, abund,abund_ref
-    print,'%PROTON_DENS: Using the default abundance file '+!abund_file +' to calculate the p/e ratio'
+    IF NOT keyword_set(quiet) THEN print,'% PROTON_DENS: Using the default abundance file '+!abund_file +' to calculate the p/e ratio'
   ENDIF 
 ENDELSE 
 
@@ -120,7 +134,7 @@ IF count GT 0 THEN BEGIN
 ENDIF ELSE BEGIN
   IF n_elements(ioneq) EQ 0 THEN BEGIN 
     read_ioneq,!ioneq_file, ioneq_logt,ioneq,ioneq_ref
-    print,'%PROTON_DENS: Using the default ion fraction file '+!ioneq_file+' to calculate the p/e ratio'
+    IF NOT keyword_set(quiet) THEN print,'% PROTON_DENS: Using the default ion fraction file '+!ioneq_file+' to calculate the p/e ratio'
   ENDIF
 ENDELSE 
 
