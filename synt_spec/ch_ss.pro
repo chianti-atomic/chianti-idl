@@ -527,13 +527,15 @@
 ;       V.20, 19-Nov-2020, Peter Young
 ;          Modified behavior when switching to log plots to better
 ;          display the spectrum.
+;       V.21, 11-Dec-2020, Peter Young
+;          Changed dem_int to double-precision.
 ;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.20, 19-Nov-2020
+; VERSION     :  V.21, 11-Dec-2020
 ;
 ;-
 PRO restore_spectrum
@@ -1744,7 +1746,7 @@ CASE 1 OF
 
          gdt=WHERE((ioneq_logt GE MIN(dem_logt)) AND  (ioneq_logt LE MAX(dem_logt))) 
          dem_int1=10.^(SPLINE(dem_logt,dem,ioneq_logt[gdt], 10))
-         dem_int=FLTARR(n_ioneq_logt)
+         dem_int=dblarr(n_ioneq_logt)
          ngt=n_elements(gdt)
          FOR igt=0,ngt-1 DO  dem_int[gdt[igt]]=dem_int1[igt] >  0.
 

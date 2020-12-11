@@ -368,6 +368,16 @@
 ;                than call pop_solver. This leads to a much quicker
 ;                calculation. 
 ;
+;       REGULAR:  If set, then the regular inversion method for
+;                 pop_solver will be used (i.e., the IDL invert
+;                 routine). [This is the default.] 
+;
+;       SPARSE:   If set, then the sparse matrix inversion routine
+;                 (linbcg) for pop_solver will be used.
+;
+;       LAPACK:   If set, then the LAPACK matrix inversion routine
+;                 (la_invert) for pop_solver will be used. 
+;
 ; CALLS:  CH_GET_FILE
 ;          many CHIANTI standard routines,  including:
 ;          READ_IONEQ, READ_DEM, READ_MASTERLIST, ION2SPECTROSCOPIC,
@@ -634,9 +644,10 @@
 ;            to code.
 ;          v.50, 8-Oct-2020, GDZ, added radfunc which is passed to
 ;          pop_solver.
-;
-;
-; VERSION     : 50
+;          v.51, 11-Dec-2020, Peter Young
+;            Changed intensity and DEM to double-precision; introduced
+;            /regular, /sparse and /lapack keywords that get passed to
+;            pop_solver. 
 ;
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
@@ -668,7 +679,8 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
       goft=goft, ioneq_name=ioneq_name, dem_name=dem_name, $
       noprot=noprot, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC, progress=progress, $
                   no_sum_int=no_sum_int,  group=group,frac_cutoff=frac_cutoff, $
-                  noionrec=noionrec, no_rrec=no_rrec, lookup=lookup
+                  noionrec=noionrec, no_rrec=no_rrec, lookup=lookup, $
+                  regular=regular, sparse=sparse, lapack=lapack
 
 
 
@@ -1000,7 +1012,7 @@ IF n_elements(logt_isothermal) EQ 0  THEN BEGIN
 
 
          dem_int1=10.^(SPLINE(dem_logt,dem,ioneq_logt[gdt]))
-         dem_int=FLTARR(n_ioneq_logt)
+         dem_int=dblARR(n_ioneq_logt)
          ngt=n_elements(gdt)
          FOR igt=0,ngt-1 DO  dem_int[gdt[igt]]=dem_int1[igt] >  0.
 
@@ -1029,12 +1041,14 @@ ENDIF    ; log T isothermal
 
 IF model_name EQ  'Function' THEN  BEGIN 
    IF n_elements(logt_isothermal) EQ 0 THEN BEGIN
-      IF keyword_set(goft) THEN $
-        t_index=WHERE( (ioneq_logt GE min(alog10(temperature))) AND $
-                       (ioneq_logt LE  max(alog10(temperature)))) ELSE $
+      IF keyword_set(goft) THEN BEGIN 
+         t_index=WHERE( (ioneq_logt GE min(alog10(temperature))) AND $
+                        (ioneq_logt LE  max(alog10(temperature))))
+      ENDIF ELSE BEGIN
         t_index=WHERE((dem_int NE 0.)  AND $
-                      (ioneq_logt GE min(alog10(temperature))) AND $
-                      (ioneq_logt LE  max(alog10(temperature))) ) 
+                       (ioneq_logt GE min(alog10(temperature))) AND $
+                       (ioneq_logt LE  max(alog10(temperature))) )
+      ENDELSE 
 
    ENDIF   ELSE $
      t_index = where((logt_isothermal GE MIN(ioneq_logt)) AND $
@@ -1072,7 +1086,7 @@ IF KEYWORD_SET(verbose) AND  model_file NE ' ' THEN BEGIN
 END  
 
 IF keyword_set(no_sum_int) AND n_elements(logt_isothermal) NE 0 THEN BEGIN
-   list_int=fltarr(n_elements(logt_isothermal),1)
+   list_int=dblarr(n_elements(logt_isothermal),1)
 ENDIF ELSE list_int=0d0
 list_wvl=0.d
 list_flag = 0
@@ -1219,19 +1233,28 @@ FOR ilist=0,nlist-1 DO BEGIN
 
          IF keyword_set(goft) THEN BEGIN 
 
-            IF model_name EQ  'Function' THEN $ 
-              t_index=WHERE(this_ioneq NE 0. AND $
-                            (ioneq_logt GE min(alog10(temperature))) AND $
-                            (ioneq_logt LE  max(alog10(temperature))) ) ELSE $ 
-              t_index=WHERE(this_ioneq NE 0.) 
+            IF model_name EQ  'Function' THEN BEGIN  
+               t_index=WHERE(this_ioneq NE 0. AND $
+                             (ioneq_logt GE min(alog10(temperature))) AND $
+                             (ioneq_logt LE  max(alog10(temperature))) )
+            ENDIF ELSE BEGIN 
+               t_index=WHERE(this_ioneq NE 0.)
+            ENDELSE 
 
          ENDIF ELSE BEGIN 
 
-            IF model_name EQ  'Function' THEN $ 
+            IF model_name EQ  'Function' THEN BEGIN 
               t_index=WHERE((dem_int NE 0.) AND (this_ioneq NE 0.) AND $
                             (ioneq_logt GE min(alog10(temperature))) AND $
-                            (ioneq_logt LE  max(alog10(temperature))) ) ELSE $
-              t_index=WHERE((dem_int NE 0.) AND (this_ioneq NE 0.))
+                            (ioneq_logt LE  max(alog10(temperature))) )
+           ENDIF ELSE BEGIN
+             ;
+             ; PRY 26-Oct-2020: modified t_index
+             ;
+              ff=dem_int*this_ioneq*10.^ioneq_logt
+              t_index=where(ff GE max(ff)*1e-4)
+;              t_index=WHERE((dem_int NE 0.) AND (this_ioneq NE 0.))
+           ENDELSE 
 
          ENDELSE   
 
@@ -1426,7 +1449,8 @@ nn=n_elements(anylines)
          ENDIF
 
          IF keyword_set(no_lookup) THEN BEGIN
-           pop_solver, input,temp,dens,pops,/pressure,radfunc=radfunc, frac_cutoff=frac_cutoff,verbose=verbose
+            pop_solver, input,temp,dens,pops,/pressure,radfunc=radfunc, frac_cutoff=frac_cutoff, $
+                        verbose=verbose, regular=regular, sparse=sparse, lapack=lapack
          ENDIF 
 
 
@@ -1565,7 +1589,7 @@ nn=n_elements(anylines)
                t_list_goft = this_goft
 
              ENDIF  ELSE BEGIN 
-               t_list_int=FLOAT(intensity)
+               t_list_int=double(intensity)
              END 
 
 ;store the absolute value of the wavelengths
@@ -1590,7 +1614,7 @@ nn=n_elements(anylines)
                  nn_exist=n_elements(reform(list_int[0,*]))
                  nn_new=nn+nn_exist
 
-                 list_int_new=fltarr(n_elements(logt_isothermal),nn_new)
+                 list_int_new=dblarr(n_elements(logt_isothermal),nn_new)
 ;GDZ-fixed bug.
                  FOR i=0,n_elements(logt_isothermal)-1 DO BEGIN
                    list_int_new[i,0:nn_exist-1]=list_int[i,*]   ; Intensity of previous lines stays the same
