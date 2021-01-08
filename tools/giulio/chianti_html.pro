@@ -1,46 +1,66 @@
-; Written by Giulio Del Zanna (DAMTP).
+
+;+
+; NAME:
+;     CHIANTI_HTML
 ;
-; ONLY for internal CHIANTI distribution.
-;----------------------------------------
+; PURPOSE:
+;     Creates a series of html files and tables, organised by element,
+;     under the 'your_top_WWW_page' directory.
 ;
-; CALL: 
+;     The files are created locally and should be ftp'ed to the
+;     CHIANTI webpage site.
 ;
-;    chianti_html, 'your_top_WWW_page', 'your_www_address', !xuvtop
+;     When asked to create the index.html file, you should type 'y'
+;     for yes.
 ;
-; If !xuvtop is not defined, you can just give the path 
-; to where the top directory is.
+; CATEGORY:
+;     CHIANTI; webpage.
 ;
-; The routine creates (optionally) a test.html file with the 
-; front page with all the ions that are present in 
-; the current version of CHIANTI, with all the WWW links.
-; It is useful to make sure about what we have in the database.
+; CALLING SEQUENCE:
+;     CHIANTI_HTML
 ;
-; Then, it creates a series of html files and tables, organised
-; by element under the 'your_top_WWW_page' directory.
+; INPUTS:
+;     None.
 ;
-; 'your_www_address' must point to the internet address to 
-;  where you have !xuvtop available on-line. 
-;  It might not necessarily be the same as your !xuvtop.
+; OPTIONAL INPUTS:
+;     Directory:  The top directory where the files will go. If not
+;                 set, then the files will go in the sub-directory
+;                 "tree" of the current working directory.
+;     Www_Address: The http address of the 'dbase' directory
+;                  containing the Solarsoft database directories. If
+;                  not specified, then the NASA sohoftp address is
+;                  used.
+;     XuvTop:  The path to the CHIANTI dbase directory on the
+;              user's computer. If not specified, then the
+;              system variable !xuvtop is used.
+;	
+; KEYWORD PARAMETERS:
+;     None.
 ;
+; OUTPUTS:
+;     Creates a sub-directory 'tree' that contains further
+;     sub-directories for each element. A html file for each ion is
+;     created containing the file comments for the ion's data
+;     file and stored in the element directory. A file tree/index.html
+;     is also created containing a table with links to all the ion
+;     files. 
 ;
-; RESTRICTIONS:
+; EXAMPLE:
+;     IDL> chianti_html
 ;
-; You must have the CHIANTI routines available, and SSW running.
-;
-; The 'your_top_WWW_page' must exist, as well as the element 
-; subdirectories (e.g. 'your_top_WWW_page/mg/' for Mg)
-;
-; The 'dielectronic files are created, but no 
-; link from the main page is provided.
-;
-;
-; Version 1, August 2002, GDZ.
-;
-;  Modified for v.8, Sept 2015
-;
-;  Modified 17 Nov 2020, GDZ:  removed the 'dielectronic' table.
-;
-;  Modified 18 Nov 2020, GDZ, added a warning and removed a double if.
+; MODIFICATION HISTORY:
+;     Ver.1, Aug-2002, GDZ
+;     Ver.2, Sep-2015, GDZ
+;       Modified for v.8.
+;     Ver.3, 17-Nov-2020, GDZ
+;       Removed the 'dielectronic' table.
+;     Ver.4, 18-Nov-2020, GDZ
+;       Added a warning and removed a double if.
+;     Ver.5, 06-Jan-2021, Peter Young
+;       Changed default value of WWW_ADDRESS to point to Solarsoft;
+;       updated header.
+;-
+
 
 
 PRO chianti_html, directory =directory, www_address=www_address,  xuvtop =xuvtop 
@@ -49,8 +69,12 @@ PRO chianti_html, directory =directory, www_address=www_address,  xuvtop =xuvtop
   IF n_elements(directory) EQ 0 THEN directory= 'tree' 
 
 
-  IF n_elements(www_address) eq 0 then www_address='http://www.chiantidatabase.org/sswidl/dbase/'
-
+ ;
+ ; The following means that links to the data files go to the
+ ; SolarSoft master tree.
+ ;
+  IF n_elements(www_address) eq 0 then www_address='https://sohoftp.nascom.nasa.gov/solarsoft/packages/chianti/dbase/'
+  
   IF n_elements(xuvtop) EQ 0 THEN   xuvtop = !xuvtop
 
   CASE os_family() OF
@@ -206,7 +230,6 @@ PRO chianti_html, directory =directory, www_address=www_address,  xuvtop =xuvtop
 
 ;    stop
   ENDIF  
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
