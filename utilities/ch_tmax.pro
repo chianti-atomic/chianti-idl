@@ -1,4 +1,4 @@
-FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log
+FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp
 
 ;+
 ; NAME:
@@ -25,7 +25,11 @@ FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log
 ;
 ; KEYWORD PARAMETERS:
 ;     LOG:    If set, then the logarithm (base 10) of T_max is
-;             returned. 
+;             returned.
+;     INTERP: If set, then the ion fraction curve is interpolated onto
+;             a logT scale with 0.01 dex steps. Note that the
+;             interpolation is done on the logarithm of the ion
+;             fraction values.
 ;
 ; OUTPUTS:
 ;     Returns the temperature of maximum ionization in K. If the ion
@@ -45,11 +49,13 @@ FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log
 ;         get_tmax.pro, only I've added the /LOG keyword.
 ;     Ver.2, 9-Aug-2019, Peter Young
 ;         Changed behavior so that the one-higher ionization stage is
-;         used for the dielectronic "d" ions; updated header format. 
+;         used for the dielectronic "d" ions; updated header format.
+;     Ver.3, 21-Jan-2021, Peter Young
+;         Added /interp keyword.
 ;-
 
 IF n_params() LT 1 THEN BEGIN
-  print,'Use:  IDL> tmax=ch_tmax( ion_name [, /log, ioneqname=] )'
+  print,'Use:  IDL> tmax=ch_tmax( ion_name [, /log, ioneqname=, /interp ] )'
   return,-1.
 ENDIF 
 
@@ -67,7 +73,24 @@ convertname,ionname,iz,ion,diel=diel
 ii=reform(ii[*,iz-1,ion-1+diel])
 
 getmax=max(ii,index)
+logtmax=tt[index]
 
-IF keyword_set(log) THEN return,tt[index] ELSE return,10.^tt[index]
+IF keyword_set(interp) THEN BEGIN
+   k=where(ii NE 0.)
+   y=alog10(ii[k])
+   x=tt[k]
+   y2=spl_init(x,y)
+  ;
+   xi=findgen(41)/100.+logtmax-0.2
+   k=where(xi GE min(tt) AND xi LE max(tt))
+   xi=xi[k]
+  ;
+   yi=spl_interp(x,y,y2,xi)
+   getmax=max(yi,index)
+   logtmax=xi[index]
+ENDIF 
+
+
+IF keyword_set(log) THEN return,logtmax ELSE return,10.^logtmax
 
 END
