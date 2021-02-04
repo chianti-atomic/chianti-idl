@@ -341,11 +341,14 @@ on_error,0
 ;
 ;               v.31, 17-Nov-2020, Peter Young
 ;                 Added keyword /lookup.
+;
+;               v.32, 11-Dec-2020, Peter Young
+;                 Forced isothermal EM to be double-precision.
+;
+;               v.33, 22-Jan-2021, Peter Young
+;                 Modified lookup implementation to make use of the
+;                 input structure tag.
 ;-
-
-
-;common with the continuum routines:
-;common elements,abund,abund_ref,ioneq,ioneq_logt,ioneq_ref
 
 IF  n_params() lt 3 then begin
    print,' type> make_chianti_spec, output_struct,  LAMBDA, SPECTRUM,$ '
@@ -354,6 +357,13 @@ IF  n_params() lt 3 then begin
    print,'     ABUND_NAME= , MIN_ABUND=, BINSIZE = BINSIZE effarea=, /LOOKUP] '
 END
 
+;
+; Check if the 'transitions' structure has the lookup tag and set
+; lookup if necessary.
+;
+IF tag_exist(transitions,'lookup') THEN BEGIN
+   IF transitions.lookup EQ 1 THEN lookup=1b
+ENDIF 
 
 IF n_elements(lambda) NE 0 THEN lambda=double(lambda)
 
@@ -992,11 +1002,11 @@ IF KEYWORD_SET(continuum) THEN BEGIN
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, dem_int=dem_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, abund_file=abund_name, $
-                  ioneq_file=ioneq_name, lookup=transitions.lookup
+                  ioneq_file=ioneq_name, lookup=lookup
 
    ENDIF   ELSE BEGIN 
 
-      em_int=10.^transitions.logem_isothermal
+      em_int=10.^double(transitions.logem_isothermal)
       temp = 10.^transitions.logt_isothermal      
 
      ;
@@ -1027,7 +1037,7 @@ IF KEYWORD_SET(continuum) THEN BEGIN
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, em_int=em_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, ioneq_file=ioneq_name, $
-                  abund_file=abund_name, lookup=transitions.lookup
+                  abund_file=abund_name, lookup=lookup
 
    ENDELSE 
 

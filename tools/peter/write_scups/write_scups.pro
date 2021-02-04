@@ -94,6 +94,10 @@
 ;        the descaled and original upsilons.
 ;     Ver.8, 23-Jul-2020, Peter Young
 ;        Made ttype_count a long integer array.
+;     Ver.9, 04-Feb-2021, Peter Young
+;        /ignore_limit wasn't working correctly so this has
+;        been fixed; added message about how many limits have been
+;        ignored. 
 ;-
 
 
@@ -219,6 +223,7 @@ flagstr=0
 
 ttype_count=lonarr(10)
 prob_cnt=intarr(6)
+ignore_count=0l
 
 ;
 ; This loop goes through all transitions in UPSSTR.
@@ -476,24 +481,30 @@ FOR i=0,n-1 DO BEGIN
     lim_range[1]=lim_range[1]+max(sups)*params[3]
     lim_range=lim_range>0
 
-    IF lim LT lim_range[0] OR lim GT lim_range[1] AND NOT keyword_set(ignore_limit) THEN BEGIN
-      prob=1b
-      prob_cnt[5]=prob_cnt[5]+1
-      printf,llog,'Transition: '+trim(l1)+'-'+trim(l2)+'; ups index: '+trim(i)+' -- *high-T limit problem*'
-      flagstr=update_flagstr(flagstr,l1,l2,flag=6)
-      IF plot_prob_type EQ 6 OR plot_trans_type EQ ttype THEN BEGIN
-        title='*Limit point* ('+trim(l1)+' - '+trim(l2)+')'
-        yra=[0,max([sups,lim])*1.10]
-        title='*PT=6 (limit)* Trans:'+trim(l1)+'-'+trim(l2)+' (TT='+trim(ttype)+')'
-        plot,st,sups,xra=[-0.05,1.05],/xsty,psym=1,title=title,charsiz=1.5,yra=yra,/ysty
-        oplot,[1,1],lim_range,psym=2
-        plots,psym=6,1,lim
-        xr=!x.crange
-        yr=!y.crange
-        xyouts,xr[0]*0.95+xr[1]*0.05,yr[0]*0.95+yr[1]*0.05,'upsstr index='+trim(i)
-        oplot,[0,0],[-1e3,1e3],line=2
-        oplot,[1,1],[-1e3,1e3],line=2
-      ENDIF
+    IF lim LT lim_range[0] OR lim GT lim_range[1] THEN BEGIN
+       IF keyword_set(ignore_limit) THEN BEGIN
+          st=[st,1.]
+          sups=[sups,extrap1]
+          ignore_count=ignore_count+1
+       ENDIF ELSE BEGIN 
+          prob=1b
+          prob_cnt[5]=prob_cnt[5]+1
+          printf,llog,'Transition: '+trim(l1)+'-'+trim(l2)+'; ups index: '+trim(i)+' -- *high-T limit problem*'
+          flagstr=update_flagstr(flagstr,l1,l2,flag=6)
+          IF plot_prob_type EQ 6 OR plot_trans_type EQ ttype THEN BEGIN
+             title='*Limit point* ('+trim(l1)+' - '+trim(l2)+')'
+             yra=[0,max([sups,lim])*1.10]
+             title='*PT=6 (limit)* Trans:'+trim(l1)+'-'+trim(l2)+' (TT='+trim(ttype)+')'
+             plot,st,sups,xra=[-0.05,1.05],/xsty,psym=1,title=title,charsiz=1.5,yra=yra,/ysty
+             oplot,[1,1],lim_range,psym=2
+             plots,psym=6,1,lim
+             xr=!x.crange
+             yr=!y.crange
+             xyouts,xr[0]*0.95+xr[1]*0.05,yr[0]*0.95+yr[1]*0.05,'upsstr index='+trim(i)
+             oplot,[0,0],[-1e3,1e3],line=2
+             oplot,[1,1],[-1e3,1e3],line=2
+          ENDIF
+       ENDELSE 
     ENDIF ELSE BEGIN   ; no problem
       st=[st,1.]
       sups=[sups,lim]
@@ -621,6 +632,12 @@ IF total(prob_cnt) NE 0 THEN BEGIN
   print,'Please check the file '+logfile+' for more details.'
   print,'To make plots of the problem transitions, use the PLOT_PROB_TYPE keyword.'
 ENDIF
+
+
+IF ignore_count NE 0 THEN BEGIN
+   print,''
+   print,'The /IGNORE_LIMIT keyword was set and the high temperature limits of '+trim(ignore_count)+' transitions were ignored.'
+ENDIF 
 
 
 ;

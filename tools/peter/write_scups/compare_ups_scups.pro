@@ -66,6 +66,8 @@ PRO compare_ups_scups, ion_name, missing_trans=missing_trans,  $
 ;       Added PERC_CHECK optional input.
 ;     Ver.3, 28-Jul-2020, Peter Young
 ;       Prints a message saying what perc_check is.
+;     Ver.4, 04-Feb-2021, Peter Young
+;       Added checks as to whether the files exist.
 ;-
 
 
@@ -83,6 +85,17 @@ junk=temporary(prob_trans)
 
 ups_file=ion_name+'.ups'
 IF keyword_set(auto) THEN scups_file=ion_name+'.scups_auto' ELSE scups_file=ion_name+'.scups'
+chck=file_info(scups_file)
+IF chck.exists EQ 0 THEN BEGIN
+   print,'% COMPARE_UPS_SCUPS: The SCUPS file was not found. Returning...'
+   return
+ENDIF 
+
+chck=file_info(ups_file)
+IF chck.exists EQ 0 THEN BEGIN
+   print,'% COMPARE_UPS_SCUPS: The UPS file was not found. Returning...'
+   return
+ENDIF 
 
 
 IF n_elements(perc_check) EQ 0 THEN perc_check=0.5
@@ -124,20 +137,20 @@ ENDFOR
 
 IF n_tags(missing_trans) GT 0 THEN BEGIN
   n=n_elements(missing_trans)
-  print,'% COMPARE_UPS_SCUPS: there are '+trim(n)+' missing transitions in the SCUPS file.'
-  print,'                    Give optional output MISSING_TRANS= to retrieve the list.'
+  print,'% COMPARE_UPS_SCUPS: There are '+trim(n)+' missing transitions in the SCUPS file.'
+  print,'                     Give optional output MISSING_TRANS= to retrieve the list.'
 ENDIF ELSE BEGIN
-  print,'% COMPARE_UPS_SCUPS: there are no missing transitions in the SCUPS file.'
+  print,'% COMPARE_UPS_SCUPS: There are no missing transitions in the SCUPS file.'
 ENDELSE 
 
-print,'% COMPARE_UPS_SCUPS: checking for upsilons discrepant by '+trim(string(format='(f8.2)',perc_check))+'%...'
+print,'% COMPARE_UPS_SCUPS: Checking for upsilons discrepant by '+trim(string(format='(f8.2)',perc_check))+'%...'
 
 IF n_tags(prob_trans) GT 0 THEN BEGIN
   n=n_elements(prob_trans)
-  print,'% COMPARE_UPS_SCUPS: there are '+trim(n)+' problem transitions in the SCUPS file.'
-  print,'                    Give optional output PROB_TRANS= to retrieve the list.'
+  print,'% COMPARE_UPS_SCUPS: ...there are '+trim(n)+' problem transitions in the SCUPS file.'
+  print,'                     Give optional output PROB_TRANS= to retrieve the list.'
 ENDIF ELSE BEGIN
-  print,'% COMPARE_UPS_SCUPS: there are no problem transitions in the SCUPS file.'
+  print,'% COMPARE_UPS_SCUPS: ...there are no problem transitions in the SCUPS file.'
 ENDELSE 
 
 
