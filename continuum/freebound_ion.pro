@@ -31,8 +31,8 @@ PRO freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, pe=pe, $
 ;              specified then it is obtained from the chianti.ip
 ;              file. 
 ;     Vdata:   An array containing the Verner & Yakovlev data array.
-;     Pe:      An array containing the PE data from READ_FBLVL
-;     Klgfb:   An array containing the KLGFB data from READ_FBLVL
+;     Pe:      No longer used. Retained for backwards compatibility.
+;     Klgfb:   No longer used. Retained for backwards compatibility.
 ;
 ;     [Note: the above inputs are used when calling freebound_ion from 
 ;             freebound in order to give a small time saving.]
@@ -54,7 +54,7 @@ PRO freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, pe=pe, $
 ;
 ; CALLS:
 ;      READ_FBLVL, ZION2FILENAME, VERNER_XS, KARZAS_XS, CONCAT_DIR,
-;      READ_IP, READ_KLGFB, FILE_EXIST
+;      READ_IP, FILE_EXIST
 ;
 ; PROGRAMMING NOTES:
 ;      The way I treat the exponential function in the expression for the 
@@ -81,12 +81,14 @@ PRO freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, pe=pe, $
 ;          Added check for n_params()
 ;      Ver.6, 18-Jun-2020, Peter Young
 ;          Updated header; no change to code.
+;      Ver.7, 12-Feb-2020, Peter Young
+;          Removed call to read_klgfb.
 ;-
 
 
 if n_params() lt 5 then begin
-    print,' > freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, pe=pe, '
-    print,'        klgfb=klgfb, noverner=noverner, kev=kev'
+    print,' > freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, '
+    print,'        noverner=noverner, kev=kev'
     print,'  '
     return
 endif
@@ -122,7 +124,7 @@ IF (n_elements(vdata) EQ 0) AND NOT keyword_set(noverner) THEN BEGIN
   free_lun,lun
 ENDIF
 
-IF n_elements(pe) EQ 0 AND n_elements(klgfb) EQ 0 THEN read_klgfb,pe,klgfb
+;IF n_elements(pe) EQ 0 AND n_elements(klgfb) EQ 0 THEN read_klgfb,pe,klgfb
 
 IF n_elements(ip) EQ 0 THEN BEGIN
   dir=concat_dir(!xuvtop,'ip')

@@ -1,94 +1,83 @@
+
+
+pro read_klgfb,pe,gfb,n
+
 ;+
-;
-; PROJECT:  CHIANTI
-;
-;       CHIANTI is an atomic database package for the calculation of
-;       continuum and emission line spectra from astrophysical plasmas. It is a 
-;       collaborative project involving the Naval Research Laboratory
-;       (Washington DC, USA), the Arcetri Observatory (Firenze, Italy), and the
-;       Cambridge University (United Kingdom).
-;
-;
 ; NAME:
-;	READ_KLGFB
+;     READ_KLGB
 ;
 ; PURPOSE:
-;
-;	to read CHIANTI files file containing the free-bound gaunt factors for n=1-6
-;       from Karzas and Latter, 1961, ApJSS, 6, 167
+;     Return the Karzas & Latter (1961) freebound Gaunt factors for
+;     the specified n-levels.
 ;
 ; CATEGORY:
-;
-;	science.
+;     CHIANTI; continuum; freebound.
 ;
 ; CALLING SEQUENCE:
-;
-;       READ_KLGFB,PE,GFB
-;
+;     READ_KLGFB, Pe, Gfb, N
 ;
 ; INPUTS:
+;     N:   Principal quantum number. An integer between 1 and 6.
 ;
-;	File:  none
-;
-;
-;	
+; KEYWORD PARAMETERS:
+;	KEY1:	Document keyword parameters like this. Note that the keyword
+;		is shown in ALL CAPS!
 ;
 ; OUTPUTS:
-;
-;	PE:   an array of natural log of 41 values of Photon Energy values relative to 
-;             the recombination edge i.e., at the recombination edge, PE=0.
-;       GFB:  an array containing the natural log of free-bound gaunt factors indexed 
-;             by energy, n and l
-;
-;
-;
-;  PROCEDURE:  reads the file:  '!xuvtop/continuum/klgfb.dat'
-
-;   
+;     Pe:  The outgoing photon energy in Rydbergs (1D array).
+;     Gfb:  Free bound Gaunt factors for the orbital sub-shells of the
+;           specified principal quantum number. The array has
+;           dimensions [NL,NE] where NL is the number of sub-shells
+;           (=N-1), and NE is the number of energies.
 ;
 ; EXAMPLE:
+;     Read the Gaunt factors for the 3s, 3p and 3d levels:
 ;
-;             > read_klgfb,pe,klgfb
-;                  the free-bound gaunt factor vs. energy for recombination to a hydrogen 2p state
-;                  (n=2 and l=1) is given by klgfb(*,n-1,l-1)
+;     IDL> read_klgfb, pe, klgfb, 3
 ;
 ; MODIFICATION HISTORY:
-; 	Written by:	Ken Dere
-;	July 2002:     Version 1.0
-;             Version 2, 8-Aug-02, GDZ
-;             corrected a typo.
-;
-; VERSION     :   V.2, 8-Aug-02
-;
+;     Ver.1, 12-Feb-2021, Peter Young
+;       A complete rewrite of the original read_klgfb to read new data
+;       files. 
 ;-
-pro read_klgfb,pe,gfb
-;
-; read karzas and latter files containing log(photon energy),log (fb gaunt factor)
-;
-openr,lur,concat_dir(concat_dir(!xuvtop,'continuum'),'klgfb.dat'),/get_lun
-;
-ngfb=1
-nume=1
-;
-readf,lur,ngfb,nume    ; number of n values, number of photon energy values
-;
-pe=fltarr(nume)
-readf,lur,pe
-;
-g=fltarr(nume)
-gfb=dblarr(nume,ngfb,ngfb)
-;
-i1=1 & i2=1
-;
-for n=0,ngfb-1 do begin
-   for l=0,n do begin
-      readf,lur,i1,i2,g
-      gfb(0,n,l)=g
-   endfor
-endfor
-;
-free_lun,lur
-;
-end
 
 
+IF n_params() LT 3 THEN BEGIN
+   print,'Use:  IDL> read_klgfb, pe, klgfb, n'
+   print,''
+   print,'   n is an input with value between 1 and 6'
+   return
+ENDIF 
+
+dir=concat_dir(!xuvtop,'continuum')
+file=concat_dir(dir,'klgfb_'+trim(n)+'.dat')
+
+chck=file_info(file)
+IF chck.exists EQ 0 THEN BEGIN
+   print,'% READ_KLGFB: The Karzas data file does not exist. Returning...'
+   return
+ENDIF 
+
+;
+; Get number of lines in file.
+;
+r=query_ascii(file,info)
+nlines=info.lines
+
+;
+; Read data into array.
+;
+openr,lin,file,/get_lun
+data=fltarr(n+1,nlines)
+readf,lin,data
+free_lun,lin
+
+;
+; Reformat data.
+;
+pe=reform(data[0,*])
+gfb=reform(data[1:n,*])
+
+IF n GT 1 THEN gfb=transpose(gfb)
+
+END

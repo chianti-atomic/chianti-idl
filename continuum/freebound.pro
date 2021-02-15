@@ -95,7 +95,7 @@ PRO freebound, temp, wvl, int, sumt=sumt, photons=photons, $
 ;             10^-40 erg cm^-2/s/sr/keV.
 ;
 ; CALLS:
-;      FREEBOUND_ION, READ_KLGFB, GET_IEQ, READ_ABUND, READ_IOENQ
+;      FREEBOUND_ION, GET_IEQ, READ_ABUND, READ_IOENQ
 ;
 ; EXAMPLE:
 ;     IDL> wvl=findgen(100)+1.
@@ -127,7 +127,9 @@ PRO freebound, temp, wvl, int, sumt=sumt, photons=photons, $
 ;        Fixed bug in SNGL_ION implementation - needs to be converted
 ;        to the recombining ion (RECOMB_ION).
 ;     Ver.10, 23-Jun-2020, Peter Young
-;        Updated header to refer to CTR No. 12; no change to code. 
+;        Updated header to refer to CTR No. 12; no change to code.
+;     Ver.11, 12-Feb-2021, Peter Young
+;        Removed call to read_klgfb as no longer needed.
 ;-
 
 
@@ -204,9 +206,9 @@ ident_t=make_array(nt,val=1.)
 
 read_ip,!xuvtop+'/ip/chianti.ip',ionpot,ipref
 
-read_klgfb,pe,klgfb
-ksize=size(klgfb)
-max_ngf=ksize(2)
+;; read_klgfb,pe,klgfb
+;; ksize=size(klgfb)
+;; max_ngf=ksize(2)
 
 IF NOT keyword_set(noverner) THEN BEGIN
   vdata=dblarr(10,465)
@@ -227,7 +229,7 @@ IF n_elements(iz) NE 0 THEN BEGIN
     ip=ionpot[iz-1,ion-1]
     IF (total(ieq) NE 0.) THEN BEGIN
       freebound_ion,temp,wvl,int,iz,ion,ip=ip, $
-           vdata=vdata,pe=pe,klgfb=klgfb,noverner=noverner, kev=kev
+           vdata=vdata,noverner=noverner, kev=kev
       int=int*ab*(ident_wvl#ieq)
     ENDIF
  ;
