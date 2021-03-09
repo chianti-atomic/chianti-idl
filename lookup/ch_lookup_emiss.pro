@@ -74,6 +74,8 @@ FUNCTION ch_lookup_emiss, iz, ion, temp=temp, ltemp=ltemp, dens=dens, ldens=lden
 ;     Ver.1, 7-Aug-2019, Peter Young
 ;     Ver.2, 18-Dec-2019, Peter Young
 ;       Changed processing of lookup filename.
+;     Ver.3, 16-Feb-2021, Peter Young
+;       Fixed bug when only one density and one temperature.
 ;-
 
 ;
@@ -122,19 +124,6 @@ IF NOT KEYWORD_SET(quiet) THEN BEGIN
 ENDIF
 
 
-;
-; Create lookup filename and then get populations. 
-;
-;; file='pop_lookup_'+ionname+'.txt'
-;; dir=getenv('CHIANTI_LOOKUP')
-;; readfile=concat_dir(dir,file)
-;; IF n_elements(dir_lookup) NE 0 THEN readfile=concat_dir(dir_lookup,file)
-;; chck=file_info(readfile)
-;; IF chck.exists EQ 0 THEN BEGIN
-;;   print,'% CH_LOOKUP_EMISS: the lookup file was not found. Returning...'
-;;   return,-1
-;; ENDIF 
-;
 p=ch_lookup_table_interp(ionname, dens, temp, /pad)
 IF n_tags(p) EQ 0 THEN BEGIN
   print,'% CH_LOOKUP_EMISS: the lookup file was not found. Returning...'
@@ -191,16 +180,18 @@ ENDELSE
 ;
 IF n_elements(pressure) NE 0 THEN BEGIN
   FOR i=0,nt-1 DO emstr[*].em[i]=reform(p.pop[i,i,wgfa.lvl2-1])*reform(mult_array[i,*])
-ENDIF ELSE BEGIN 
-  IF nd EQ 1 THEN BEGIN
-    emstr.em=reform(p.pop[*,*,wgfa.lvl2-1])*reform(mult_array)
-  ENDIF ELSE BEGIN
-    IF nt EQ 1 THEN BEGIN
-      FOR i=0,nd-1 DO emstr[*].em[0,i]=reform(p.pop[i,*,wgfa.lvl2-1])*reform(mult_array)
-    ENDIF ELSE BEGIN 
-      FOR i=0,nd-1 DO emstr[*].em[*,i]=reform(p.pop[i,*,wgfa.lvl2-1])*reform(mult_array)
-    ENDELSE 
-  ENDELSE
+ENDIF ELSE BEGIN
+   CASE 1 OF
+      nd EQ 1 AND nt EQ 1: emstr[*].em[0]=reform(p.pop[*,*,wgfa.lvl2-1])*reform(mult_array)
+      nd EQ 1 AND nt GT 1: emstr.em=reform(p.pop[*,*,wgfa.lvl2-1])*reform(mult_array)
+      ELSE: BEGIN
+         IF nt EQ 1 THEN BEGIN
+            FOR i=0,nd-1 DO emstr[*].em[0,i]=reform(p.pop[i,*,wgfa.lvl2-1])*reform(mult_array)
+         ENDIF ELSE BEGIN 
+            FOR i=0,nd-1 DO emstr[*].em[*,i]=reform(p.pop[i,*,wgfa.lvl2-1])*reform(mult_array)
+         ENDELSE 
+      END 
+   ENDCASE 
 ENDELSE 
 
 emstr.lambda=wgfa.wvl
