@@ -59,6 +59,8 @@
 ;     Ver.5, 06-Jan-2021, Peter Young
 ;       Changed default value of WWW_ADDRESS to point to Solarsoft;
 ;       updated header.
+;     Ver.6, 10-Mar-2021, Peter Young
+;       If DIRECTORY does not exist then it is created.
 ;-
 
 
@@ -69,6 +71,9 @@ PRO chianti_html, directory =directory, www_address=www_address,  xuvtop =xuvtop
   IF n_elements(directory) EQ 0 THEN directory= 'tree' 
 
 
+  chck=file_info(directory)
+  IF chck.exists EQ 0 THEN file_mkdir,directory
+  
  ;
  ; The following means that links to the data files go to the
  ; SolarSoft master tree.

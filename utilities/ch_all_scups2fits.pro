@@ -25,8 +25,10 @@
 ;       Version 1, Giulio Del Zanna (GDZ)  13 Oct 2020
 ;
 ; Modified    :
+;       Ver.2, 09-Mar-2021, Peter Young
+;         The output file is now gzipped.
 ;
-; VERSION     :    V.1, 13 Oct 2020
+; VERSION     :    V.2, 09-Mar-2021
 ;
 ;-        
 ;---------------------------
@@ -64,6 +66,8 @@ pro ch_all_scups2fits, dir=dir
   wrt_fits_bin_exten,st.info, file_fits
 
   wrt_fits_bin_exten,st.data, file_fits,/append
+
+  file_gzip, file_fits, /delete
 
   
 ENDFOR  ; main loop for the ions

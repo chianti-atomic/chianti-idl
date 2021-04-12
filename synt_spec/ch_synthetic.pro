@@ -647,7 +647,10 @@
 ;          v.51, 11-Dec-2020, Peter Young
 ;            Changed intensity and DEM to double-precision; introduced
 ;            /regular, /sparse and /lapack keywords that get passed to
-;            pop_solver. 
+;            pop_solver.
+;          v.52, 12-Apr-2021, Peter Young
+;            Modified the check on the dielectronic ions to ensure
+;            that it doesn't affect other ions.
 ;
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
@@ -1475,30 +1478,34 @@ nn=n_elements(anylines)
                remove,i_neg,anylines
             end 
 
-;
-; PRY, 30-Sep-2020
-; This removes any transitions for which the upper level is below
-; the lowest level in the scups data-set. For normal ions no ions will
-; be flagged, but for the old "d" ions it will be all transitions
+
+              
+; PRY, 12-Apr-2021
+; The following code is a leftover from the old dielectronic "d"
+; ions. I've modified it so the code is only executed if
+; dielectronic=1 as unexpected behavior occurred sometimes.
+                                                                 
+; Note that the removes any transitions for which the upper level is below
+; the lowest level in the scups data-set. For normal ions no ions
+; should  be flagged, but for the old "d" ions it will be all transitions
 ; below the ionization limit. I don't think this is correct as
 ; cascading from the AI levels are a legitimate population contributor
 ; to the bound levels. However, the code will be left as-is. The "d"
 ; ions are being phased out in favor of the new 2-ion models.
 ;
-; 
-            i_spl=where(lvl2[anylines] lt min(splstr.data.lvl2) or lvl2[anylines] gt max(splstr.data.lvl2))
+            IF keyword_set(dielectronic) THEN BEGIN 
+            
+               i_spl=where(lvl2[anylines] lt min(splstr.data.lvl2) or lvl2[anylines] gt max(splstr.data.lvl2))
+               IF (n_elements(i_spl) lt n_elements(anylines)) or $
+                  (n_elements(i_spl) eq n_elements(anylines) and i_spl(0) lt 0) THEN BEGIN 
+                  IF i_spl(0) ge 0  and dielectronic THEN begin
+                     IF  keyword_set(verbose) THEN  $
+                        print,gname+': removing '+trim(i_spl)+' lines... !!! '
+                     remove,i_spl,anylines
+                  ENDIF
+               ENDIF 
+            ENDIF 
 
-           IF (n_elements(i_spl) lt n_elements(anylines)) or (n_elements(i_spl) eq n_elements(anylines) $
-                                                              and i_spl(0) lt 0) THEN BEGIN ; if there are lines left in the ion
-
-; GDZ: fix this bug
-              IF i_spl(0) ge 0  and dielectronic THEN begin
-                 IF  keyword_set(verbose) THEN  $
-                    print,gname+': removing '+trim(i_spl)+' lines... !!! '
-                 remove,i_spl,anylines
-              endif
-
-              
            nn=n_elements(anylines) ; new number of lines
 
 ; Calculates power, either in phot or in erg, for each line
@@ -1648,9 +1655,9 @@ nn=n_elements(anylines)
              list_ident=[list_ident,res_ascii(t_list_l1-1)+' - '+res_ascii(t_list_l2-1)]
              list_ident_latex=[list_ident_latex,res_latex(t_list_l1-1)+' - '+res_latex(t_list_l2-1)]
                                 ;
-           ENDIF                ;  if there are lines left after zero population check 
-         ENDIF                    ;  if there are lines left after dielectronic check
-      ENDIF                      ;  if block for anylines
+;          ENDIF                  ;  if there are lines left after zero population check 
+        ENDIF                 ;  if there are lines left after dielectronic check
+      ENDIF                        ;  if block for anylines
 
     ENDIF  ELSE BEGIN                   ;  ion present in ion fraction file                                ;
       IF  keyword_set(verbose) THEN  $
