@@ -321,14 +321,6 @@
 ;
 ; KEYWORDS:
 ;
-;
-;       ALL:  if set, then all lines are included.  This means that lines for
-;             which  only an approximate wavelength is known, 
-;             denoted by a  negative wavelength value in the .wgfa file, are
-;             included. These are the lines for which there are no observed
-;             energy levels. 
-;
-;
 ;       PHOTONS:   The output intensities will be in photons instead of 
 ;                  ergs.
 ;
@@ -651,7 +643,11 @@
 ;          v.52, 12-Apr-2021, Peter Young
 ;            Modified the check on the dielectronic ions to ensure
 ;            that it doesn't affect other ions.
-;
+;          v.53, 01-Nov-2021, Peter Young
+;            Removed references to /all keyword as it doesn't
+;            do anything (all lines are included by default). The
+;            keyword is retained, however, for backwards
+;            compatibility. 
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -719,8 +715,6 @@ IF (wmin GE wmax) OR (wmin LE 0.) OR (wmax LE 0.) THEN BEGIN
    return
 END 
 
-; GDZ set the default - calculate all lines !
-if n_elements(all) eq 0 then all=1 
 
 IF n_elements(rphot) EQ 0 THEN BEGIN 
    photoexcitation =0
@@ -1287,9 +1281,6 @@ FOR ilist=0,nlist-1 DO BEGIN
 
 ; - Routine checks if there are lines in the range wmin to wmax
 ;   and also if these lines have non-zero A-values.
-; - Note that /obs_only is the inverse of /all
-
-        obs_only=1b-keyword_set(all)
  
 ; define  temperature array (TEMP) to calculate level populations
 ;-------------------------------------------------------------
@@ -1342,10 +1333,11 @@ nd=n_elements(dens)  ; number of densities
            STOP
          ENDIF 
 
-     input=ch_setup_ion(gname,rphot=rphot,radtemp=radtemp,noprot=noprot, $
-                        ioneq_file=ioneq_file,abund_file=abund_file,path=path, $
-                        quiet=quiet, $
-                          wvlmin=wmin,wvlmax=wmax, index_wgfa=anylines,obs_only=obs_only,noionrec=noionrec )
+         input=ch_setup_ion(gname,rphot=rphot,radtemp=radtemp,noprot=noprot, $
+                            ioneq_file=ioneq_file,abund_file=abund_file,path=path, $
+                            quiet=quiet, $
+                            wvlmin=wmin,wvlmax=wmax, index_wgfa=anylines, $
+                            noionrec=noionrec )
 
 
         IF anylines[0] EQ -1 THEN BEGIN 
