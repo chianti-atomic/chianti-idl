@@ -1,7 +1,7 @@
 
 FUNCTION ch_lookup_emiss, iz, ion, temp=temp, ltemp=ltemp, dens=dens, ldens=ldens, $
                           dir_lookup=dir_lookup, no_de=no_de, quiet=quiet, $
-                          pressure=pressure
+                          pressure=pressure, verbose=verbose
 
 ;+
 ; NAME:
@@ -46,7 +46,8 @@ FUNCTION ch_lookup_emiss, iz, ion, temp=temp, ltemp=ltemp, dens=dens, ldens=lden
 ; KEYWORD PARAMETERS:
 ;     NO_DE:  If set, then the emissivity is does not include the
 ;             energy factor.
-;     QUIET:  If set, then information is not printed to the screen.
+;     VERBOSE:If set, then information is printed to the IDL window. 
+;     QUIET:  No longer used, but kept for backwards compatibility.
 ;
 ; OUTPUTS:
 ;     An IDL structure with the following tags:
@@ -59,6 +60,9 @@ FUNCTION ch_lookup_emiss, iz, ion, temp=temp, ltemp=ltemp, dens=dens, ldens=lden
 ;      FLAG            INT              0
 ;      EM              DOUBLE    Array[3, 9]
 ;      VERSION         STRING    '9.0.1'
+;
+;      Flag is set to -1 for transitions with theoretical wavelengths,
+;      and 0 otherwise.
 ;
 ; RESTRICTIONS:
 ;     If the densities and/or temperatures are outside
@@ -76,7 +80,23 @@ FUNCTION ch_lookup_emiss, iz, ion, temp=temp, ltemp=ltemp, dens=dens, ldens=lden
 ;       Changed processing of lookup filename.
 ;     Ver.3, 16-Feb-2021, Peter Young
 ;       Fixed bug when only one density and one temperature.
+;     Ver.4, 04-Nov-2021, Peter Young
+;       Transitions with negative wavelengths in wgfa file are set to
+;       positive wavelength in the output structure, but flag is set
+;       to -1. This reproduces behavior of emiss_calc. Disabled /quiet
+;       and introduced /verbose. 
 ;-
+
+
+
+IF n_params() LT 1 THEN BEGIN
+  print,'Use:  IDL> em=ch_lookup_emiss( ion_name [, temp=, ltemp=, dens=, ldens=, dir_lookup= '
+  print,'                                  pressure=, /no_de, /verbose )'
+  print,''
+  print,"   ion_name is 'fe_9', for example"
+  print,'   Routine requires the CHIANTI lookup tables to exist.'
+  return,-1
+ENDIF 
 
 ;
 ; If IZ is a string then it is assumed that the ion is being specified
@@ -113,20 +133,19 @@ ENDIF
 nd=n_elements(dens)
 nt=n_elements(temp)
 
-IF NOT KEYWORD_SET(quiet) THEN BEGIN
+IF KEYWORD_SET(verbose) THEN BEGIN
   PRINT,''
   PRINT,'Log_10 temperatures...'
   PRINT,FORMAT='("   ",9f6.2)',alog10(temp)
   PRINT,''
   PRINT,'Log_10 densities...'
   PRINT,FORMAT='("   ",9f6.2)',alog10(dens)
-  verbose=1
 ENDIF
 
 
 p=ch_lookup_table_interp(ionname, dens, temp, /pad)
 IF n_tags(p) EQ 0 THEN BEGIN
-  print,'% CH_LOOKUP_EMISS: the lookup file was not found. Returning...'
+  message,' the lookup file was not found. Returning...',/continue
   return,-1
 ENDIF
 ;
@@ -194,7 +213,9 @@ ENDIF ELSE BEGIN
    ENDCASE 
 ENDELSE 
 
-emstr.lambda=wgfa.wvl
+k=where(wgfa.wvl LT 0,nk)
+IF nk NE 0 THEN emstr[k].flag=-1
+emstr.lambda=abs(wgfa.wvl)
 emstr.level1=wgfa.lvl1
 emstr.level2=wgfa.lvl2
 

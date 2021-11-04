@@ -260,8 +260,12 @@
 ;           Added keyword /VERBOSE and disabled /QUIET so that routine
 ;           no longer prints information to the IDL window (unless you
 ;           ask for it).
+;       v.41, 04-Nov-2021, Peter Young
+;           Restored original behavior, whereby transitions with
+;           negative wavelength in the .wgfa file become positive in
+;           the emiss structure but have flag set to -1.
 ;
-; VERSION     :   40
+; VERSION     :   41
 ;
 ;-
 
@@ -448,13 +452,18 @@ str={   ion_name: species, $
 emiss=replicate(str,ntrans2)
 ;----------------------------------o
 
+;
+; The following sets all wavelengths to be positive, but transitions
+; with negative wavelengths have flag=-1.
+;
+k=where(wgfa.wvl LT 0.,nk)
+IF nk NE 0 THEN emiss[k].flag=-1
 emiss.lambda=abs(wgfa.wvl)
+;
 emiss.level1=wgfa.lvl1
 emiss.level2=wgfa.lvl2
 emiss.lvl1_desc=input.elvlcstr.data[wgfa.lvl1-1].full_level
 emiss.lvl2_desc=input.elvlcstr.data[wgfa.lvl2-1].full_level
-ind=where(emiss.lambda LT 0.)
-IF ind[0] NE -1 THEN emiss[ind].flag=-1
 
 
 IF NOT KEYWORD_SET(quiet) THEN BEGIN
