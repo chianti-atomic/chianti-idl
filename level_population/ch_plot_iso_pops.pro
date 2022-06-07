@@ -1,7 +1,8 @@
 
 
 function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet=quiet, $
-                      outstr=outstr, config_match=config_match, _extra=extra
+                           outstr=outstr, config_match=config_match, _extra=extra, $
+                           lookup=lookup
 
 
 ;+
@@ -22,7 +23,9 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;	Ionname: The name of an ion in CHIANTI format. For example,
 ;	        'fe_13' for Fe XIII.
 ;       Level:  The CHIANTI level index for an atomic level belonging
-;               to the ion identified by Ionname.
+;               to the ion identified by Ionname. Can be an array of
+;               indices (in which case all levels will be shown on the
+;               output plot).
 ;
 ; OPTIONAL INPUTS:
 ;	Ldens:	The logarithm of the electron number density (units:
@@ -41,8 +44,8 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;
 ; OUTPUTS:
 ;	A plot object is created showing how the populations vary along the
-;	isoelectronic sequence. The X-axis shows the spectroscopic
-;	number. For example, 13 would correspond to XIII. In addition,
+;	isoelectronic sequence. The X-axis shows the atomic
+;	number. In addition,
 ;	the routine prints information to the IDL command window
 ;	showing which level has been found for each ion. The user
 ;	should check to make sure the correct level has been selected.
@@ -53,8 +56,9 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;	the sequence. 
 ;
 ; EXAMPLE:
-;       ch_plot_iso_pops, 'o_4', 4
-;       ch_plot_iso_pops, 'ne_6', 12, ldens=9.0
+;       IDL> p=ch_plot_iso_pops('o_4', 4)
+;       IDL> p=ch_plot_iso_pops('o_4', [1,2,3,4,5])
+;       IDL> p=ch_plot_iso_pops('ne_6', 12, ldens=9.0)
 ;
 ; MODIFICATION HISTORY:
 ;       Ver.1, 11-Feb-2014, Peter Young
@@ -63,6 +67,8 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;       Ver.3, 7-Aug-2017, Peter Young
 ;          Now creates plot object; added titles; converted from
 ;          procedure to function (to return object).
+;       Ver.4, 29-Jan-2022, Peter Young
+;          LEVEL can now be an array.
 ;-
 
 
@@ -78,6 +84,8 @@ IF keyword_set(neutrals) THEN i_neut=0 ELSE i_neut=1
 convertname,ionname,iz,ion
 diff=iz-ion
 
+nlev=n_elements(level)
+
 ;
 ; Read the search ion data into the structure 'str'
 ;
@@ -85,57 +93,93 @@ zion2filename,iz,ion,fname
 elvlcname=fname+'.elvlc'
 ;
 read_elvlc,elvlcname,elvlcstr=str
-k=where(str.data.index EQ level,nk)
-print,'Selected level is: ',str.data[k].full_level
+latex_str=strarr(nlev)
+print,'Selected levels are: '
+FOR i=0,nlev-1 DO BEGIN
+  k=where(str.data.index EQ level[i],nk)
+  print,format='(3x,i5,a20,"  -- plot_index:",i3)',level[i],str.data[k[0]].full_level,i+1
+;  print,'    ',strpad(i+1str.data[k[0]].full_level
+  latex_str[i]=str.data[k[0]].full_level_latex
+ENDFOR 
 
-latex_str=str.data[k].full_level_latex
 
 
 mlistname=concat_dir(!xuvtop,'masterlist')
 mlistname=concat_dir(mlistname,'masterlist.ions')
 read_masterlist,mlistname,mlist
 
-str={ion: '', spect: 0, lev: 0, pop: 0., latex: '', element: 0}
+
+;
+; Define output structure.
+;
+str={ion: '', spect: 0, lev: lonarr(nlev), pop: dblarr(nlev), latex: latex_str, element: 0}
 outstr=0
 
 FOR i=diff+1+i_neut,30 DO BEGIN
   zion2name,i,i-diff,iname
   k=where(trim(iname) EQ mlist,nk)
   IF nk NE 0 THEN BEGIN
-    l=ch_find_iso_level(iname,ionname,level,/quiet,outlev=outlev,config_match=config_match)
-    IF l NE -1 THEN BEGIN 
-      tmax=get_tmax(iname)
-      show_pops,i,i-diff,pstr,dens=ldens,temp=alog10(tmax),/quiet
+
+    str.ion=iname
+    str.element=i
+    str.spect=i-diff
+
+    l=lonarr(nlev)
+    FOR j=0,nlev-1 DO BEGIN 
+      l[j]=ch_find_iso_level(iname,ionname,level[j],/quiet,outlev=outlev,config_match=config_match)
+    ENDFOR
+    str.lev=l
+    
+    tmax=ch_tmax(iname)
+    IF keyword_set(lookup) THEN BEGIN
+      pop=ch_lookup_pops(iname,ldens=ldens,temp=tmax)
+    ENDIF ELSE BEGIN
+      pop=ch_pops(iname,ldens=ldens,temp=tmax,/quiet)
+    ENDELSE
+
+    ind=where(l NE -1,nind)
+    IF nind NE 0 THEN str.pop[ind]=pop.level[l-1].pop
+    
+;    IF NOT keyword_set(quiet) THEN print,format='(5x,a5,2x,a15,e10.2)',iname,outlev,str.pop
      ;
-      str.ion=iname
-      str.lev=l
-      str.element=i
-      str.spect=i-diff
-      str.pop=pstr.level[l-1].pop
-      str.latex=latex_str
-      print,format='(5x,a5,2x,a15,e10.2)',iname,outlev,str.pop
-     ;
-      IF n_tags(outstr) EQ 0 THEN outstr=str ELSE outstr=[outstr,str]
-    ENDIF
-  ENDIF  
+    IF n_tags(outstr) EQ 0 THEN outstr=str ELSE outstr=[outstr,str]
+  ENDIF
 ENDFOR 
 
-w=window(dim=[700,500])
 
-ss=2.0
-fs=14
 
 IF NOT keyword_set(quiet) THEN BEGIN
-  k=where(outstr.element NE iz) 
-  p=plot(outstr[k].element,outstr[k].pop,symbol='+',sym_size=ss, $
-         xrange=[min(outstr.element)-1,max(outstr.element)+1], $
+  k=where(outstr.element NE iz,nk) 
+  w=window(dim=[700,500])
+  ss=2.0
+  fs=14
+  xrange=[min(outstr.element)-1,max(outstr.element)+1]
+  yrange=[min(outstr.pop),max(outstr.pop)]
+
+  p=plot(/nodata, xrange, $
+         yrange,  $
          ytitle='Level population', $
-         xtitle='Atomic number',/current,xticklen=0.015,yticklen=0.015,/ylog, $
-         title='Level '+trim(level)+': '+latex_str,linestyle='none', $
-         font_size=14,_extra=extra)
-  k=where(outstr.element eq iz) 
-  q=plot(/overplot,[1,1]*outstr[k].element,[1,1]*outstr[k].pop,symbol='triangle', $
-         sym_size=ss,_extra=extra)
+         xtitle='Atomic number',/current,xticklen=0.020,yticklen=0.015,/ylog, $
+         font_size=14,_extra=extra,/xsty)
+
+  FOR i=0,nlev-1 DO BEGIN
+    pl=plot(outstr[k].element,outstr[k].pop[i],th=th,/overplot)
+    FOR j=0,nk-1 DO  pt=text(/data,align=0.5,vertical_align=0.5, $
+                             outstr[k[j]].element,outstr[k[j]].pop[i], $
+                             trim(i+1),font_size=fs,target=p)
+  ENDFOR
+
+  p.xrange=xrange
+  
+  ;; p=plot(outstr[k].element,outstr[k].pop,symbol='+',sym_size=ss, $
+  ;;        xrange=[min(outstr.element)-1,max(outstr.element)+1], $
+  ;;        ytitle='Level population', $
+  ;;        xtitle='Atomic number',/current,xticklen=0.015,yticklen=0.015,/ylog, $
+  ;;        title='Level '+trim(level)+': '+latex_str,linestyle='none', $
+  ;;        font_size=14,_extra=extra)
+  ;; k=where(outstr.element eq iz) 
+  ;; q=plot(/overplot,[1,1]*outstr[k].element,[1,1]*outstr[k].pop,symbol='triangle', $
+  ;;        sym_size=ss,_extra=extra)
   return,p
 ENDIF ELSE BEGIN
   return,-1
