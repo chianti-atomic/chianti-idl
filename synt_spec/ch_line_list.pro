@@ -92,6 +92,9 @@
 ;
 ;	A latex (default) or an ascii file with the line list
 ;
+; OPTIONAL OUTPUTS:
+;       Max_Int:  The maximum intensity printed in the table.
+;
 ; CALLS: Many SolarSoft routines.
 ;
 ;
@@ -154,15 +157,19 @@
 ;           Corrected a bug introduced in the previous version.
 ;           Also switched to \documentclass when making the latex file.
 ;
+;        v.10, 8-Jun-2022, Peter Young
+;           Added comment to state if population lookup tables were used for
+;           the calculation; added MAX_INT= optional output.
 ;
-; VERSION     : 9, 4-Aug-2005
+;
+; VERSION     : 10, 8-Jun-2022
 ;
 ;-
 pro ch_line_list, transitions, outname, latex=latex, ascii=ascii, $
       wmin=wmin,wmax=wmax,$
       SPECTRUM=SPECTRUM, abundfile=abundfile, min_abund=min_abund, $
       minI=minI,photons=photons,kev=kev, $
-      all=all,no_sort=no_sort, sngl_ion=sngl_ion
+      all=all,no_sort=no_sort, sngl_ion=sngl_ion, max_int=max_int
 
 
 ;
@@ -315,6 +322,7 @@ IF NOT keyword_set(SPECTRUM) THEN BEGIN
 ;-----------------------------------
 
    intensity = intensity*line_abunds
+   max_int=max(intensity)
 
 ;Check the min_abund.
 ;----------------------
@@ -541,7 +549,13 @@ printf,luo, ' '
       printf,luo, 'log$_{10}$ T='+ arr2str(iso_t, ',',/trim)+'\\'
       printf,luo, 'log$_{10}$ EM='+ arr2str(iso_em, ',',/trim)+'\\'
 
-   END 
+    END
+
+   IF transitions.lookup EQ 1 THEN BEGIN
+     printf,luo,'\vspace{0.5cm}'
+     printf,luo,'\textbf{Calculation performed with population lookup tables.}'
+   ENDIF 
+
 
    printf,luo,'\vspace{0.5cm}'
 ;
@@ -678,7 +692,12 @@ printf,luo,strtrim(string(w_min,'(f6.1)'),2)+' to '+strtrim(string(w_max,'(f6.1)
       printf,luo, 'log_10 T='+ arr2str(iso_t, ',',/trim)
       printf,luo, 'log_10 EM='+ arr2str(iso_em, ',',/trim)
 
-   END 
+    END
+
+   IF transitions.lookup EQ 1 THEN BEGIN
+     printf,luo,''
+     printf,luo,'Calculation performed with population lookup tables.'
+   ENDIF 
 
    printf,luo,''
 

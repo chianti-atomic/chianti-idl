@@ -44,7 +44,6 @@
 ;
 ; OPTIONAL INPUTS:
 ;
-;
 ;       OUTFILE: the name of the output latex file to be written.
 ;	
 ;	MINI:	Minimum intensity for a line to be included in the output.
@@ -65,31 +64,20 @@
 ;               infinity, i.e., no photoexcitation.)
 ;
 ;       RADTEMP The blackbody radiation field temperature (default 6000 K).
+;
+;       ABUND_NAME:  The name of a CHIANTI abundance file. If not specified, then
+;                    the user will be asked to select a file from a drop-down
+;                    list.
 ; 
+;       IONEQ_NAME:  The name of a CHIANTI ioneq file. If not specified, then
+;                    the user will be asked to select a file from a drop-down
+;                    list.
 ;
 ; OUTPUTS:
+;       A Latex file containing the table of line intensities. The default name
+;       is 'linelist.text' but this can be over-ridden with OUTFILE=.
 ;
-;	a latex file:   'linelist.tex'  in the working directory by default
-;
-;
-; OPTIONAL OUTPUTS:
-;
-;	
 ; KEYWORD PARAMETERS:
-;
-;	MINI:	Minimum intensity for a line to be included in the output
-;
-;	SNGL_ION:  specifies  a single ion (e.g. SNGL_ION='Fe_10' to include
-;                 only Fe X lines) or an array (e.g. SNGL_ION=['Fe_10','Fe_11']
-;                 to include only Fe X and Fe XI lines) of ions to be used
-;                 instead of the complete set of ions specified in
-;                 !xuvtop/masterlist/masterlist.ions 
-;
-;       MASTERLIST: string of a specific masterlist file (full path). 
-;                   If defined as a keyword (i.e. MASTERLIST=1 or /MASTERLIST)
-;                   then a widget allows the user to select a  user-defined
-;                   masterlist file. Shortcut for SNGL_ION.   
-;
 ;
 ;       PHOTONS:  units will be in photons rather than ergs
 ;
@@ -99,12 +87,10 @@
 ;             only an approximate wavelength is known (only theoretical energy
 ;             levels are known) are included.
 ;
-;
-;       OUTFILE:  the name of the output latex file to be written. By default a
-;                file 'linelist.tex' in the user's working  directory will be
-;                created. 
-;
 ;       NOPROT   If set, then proton rates are not included.
+;
+;       LOOKUP:  If set, then lookup tables are used, greatly speeding up the
+;                calculation. 
 ;
 ;
 ; CALLS:
@@ -112,23 +98,16 @@
 ;       CH_SYNTHETIC, CH_LINE_LIST
 ;
 ;
-; COMMON BLOCKS: None
-;
-; RESTRICTIONS:
-;
-; SIDE EFFECTS:
-;
-;
 ; EXAMPLE:
 ;
-;             > latex_wvl_dem, 400.,800., mini=1, pressure=1.e+15,sngl_ion='o_4'
+;       > latex_wvl_dem, 400.,800., mini=1, pressure=1.e+15,sngl_ion='o_4'
 ;
 ;
 ; CATEGORY:
 ;
 ;	spectral synthesis.
 ;
-; WRITTEN     : 
+; WRITTEN: 
 ;
 ;       Version 1, 8-Nov-01, Giulio Del Zanna (GDZ). 
 ;
@@ -146,15 +125,19 @@
 ;           Added /noprot, rphot and radtemp keywords.
 ;
 ;       V. 3, 22-May-2002 GDZ.  Removed const_net definitions.
+;
+;       Ver.4, 08-Jun-2022, Peter Young
+;         Added abund_name= and ioneq_name= optional inputs.
 ;             
-; VERSION     : Version 3, 22-May-2002
+; VERSION     : Version 4, 08-Jun-2022
 ;
 ;-
 
 PRO  latex_wvl_dem,wmin,wmax,pressure=pressure, density=density,$
-          minI=minI,photons=photons,kev=kev,all=all,$
-          sngl_ion=sngl_ion,masterlist=masterlist, $
-          outfile=outfile, noprot=noprot, rphot=rphot, radtemp=radtemp
+                   minI=minI,photons=photons,kev=kev,all=all,$
+                   sngl_ion=sngl_ion,masterlist=masterlist, $
+                   outfile=outfile, noprot=noprot, rphot=rphot, radtemp=radtemp, $
+                   dem_name=dem_name, abund_name=abund_name, lookup=lookup
 
 ;
 if n_params(0) lt 2 then begin
@@ -185,11 +168,12 @@ ENDIF ELSE message, 'No density or pressure defined -- EXIT '
 
 
 ch_synthetic, wmin, wmax, output=TRANSITIONS, err_msg=err_msg, $
-  pressure=pressure, density=density,all=all,sngl_ion=sngl_ion, $
-  photons=photons,  masterlist=masterlist,  $
-  verbose=verbose,$
-      logt_isothermal=logt_isothermal,  logem_isothermal=logem_isothermal,$
-  noprot=noprot, rphot=rphot, radtemp=ratemp
+              pressure=pressure, density=density,all=all,sngl_ion=sngl_ion, $
+              photons=photons,  masterlist=masterlist,  $
+              verbose=verbose,$
+              logt_isothermal=logt_isothermal,  logem_isothermal=logem_isothermal,$
+              noprot=noprot, rphot=rphot, radtemp=ratemp, $
+              dem_name=dem_name,lookup=lookup
 
 
 IF err_msg NE '' THEN BEGIN 
@@ -198,9 +182,13 @@ IF err_msg NE '' THEN BEGIN
 ENDIF ELSE BEGIN 
 
    ch_line_list, TRANSITIONS, OUTFILE, /latex, $
-     wmin=wmin,wmax=wmax,$
-     minI=minI,photons=photons,kev=kev, $
-     all=all,no_sort=no_sort, sngl_ion=sngl_ion
+                 wmin=wmin,wmax=wmax,$
+                 minI=minI,photons=photons,kev=kev, $
+                 all=all,no_sort=no_sort, sngl_ion=sngl_ion, $
+                 abundfile=abund_name, max_int=max_int
+
+   print,''
+   print,format='("NOTE: maximum intensity displayed in table is: ",e10.2)',max_int
 
 END 
 
