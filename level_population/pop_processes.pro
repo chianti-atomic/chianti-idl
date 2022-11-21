@@ -199,7 +199,11 @@ PRO pop_processes, IONNAME, DENS=DENS, TEMP=TEMP, LEVEL=LEVEL, $
 ;      Ver.16, 05-Nov-2020, Peter Young
 ;          For 2-ion models, normalize populations to only the
 ;          recombined ion populations (don't include
-;          recombining ion populations). 
+;          recombining ion populations).
+;      Ver.17, 21-Nov-2022, Peter Young
+;          The "ph_exc" and "ph_deexc" tags in the output.in and output.out
+;          tags have been swapped. The printed values ("stim. emiss" and
+;          "photoexc") were correct, but the output tags were inverted before.
 ;-
 
 
@@ -344,18 +348,24 @@ ENDIF  ELSE BEGIN
 ENDELSE 
 
 
+;
+; 21-Nov-2022: changed out.ph_exc to out.ph_deexc
+;
 IF level GT 1 THEN BEGIN
   ph_leave=total(data_str.aax[level-1,0:level-2])
   stem_out=ph_leave*pop[level-1]
   sum=sum+ph_leave*pop[level-1]
-  out.ph_exc=stem_out
+  out.ph_deexc=stem_out
 ENDIF
 
+;
+; 21-Nov-2022: changed out.ph_deexc to out.ph_exc
+;
 IF level LT nlvls2 THEN BEGIN 
   ph_leave=total(data_str.aax[level-1,level:*])
   ph_out=ph_leave*pop[level-1]
   sum=sum+ph_leave*pop[level-1]
-  out.ph_deexc=ph_out
+  out.ph_exc=ph_out
 ENDIF ELSE BEGIN
   ph_out=0.
 ENDELSE
@@ -446,18 +456,24 @@ ENDIF ELSE BEGIN
   p_deexc_enter=0.
 ENDELSE 
 
+;
+; 21-Nov-2022: changed in.ph_exc to in.ph_deexc
+;
 IF level LT nlvls2 THEN BEGIN 
   stem_enter=total(data_str.aax[level:*,level-1]*pop[level:*])
   sum=sum+stem_enter
-  in.ph_exc=stem_enter
+  in.ph_deexc=stem_enter
 ENDIF ELSE BEGIN
   stem_enter=0.
 ENDELSE 
 
+;
+; 21-Nov-2022: changed in.ph_deexc to in.ph_exc
+;
 IF level GT 1 THEN BEGIN
   ph_enter=total(data_str.aax[0:level-2,level-1]*pop[0:level-2])
   sum=sum+ph_enter
-  in.ph_deexc=ph_enter
+  in.ph_exc=ph_enter
 ENDIF
 
 ;
