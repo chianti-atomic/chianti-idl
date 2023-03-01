@@ -263,6 +263,8 @@ PRO pop_solver, input, t, xne, pop,  data_str=data_str, $
 ;            /verbose set.
 ;      v.11, 19-Nov-2020, Peter Young
 ;            Bug in computing routine run time has been corrected.
+;      v.12, 01-Mar-2023, Peter Young
+;            The /noionrec keyword was not working, so this has been fixed.
 ;-
 
 IF n_params() LT 4 THEN BEGIN
@@ -379,10 +381,17 @@ ENDELSE
 ltmax=ch_tmax(rates1.ion_data.gname,/log)
 reg_swtch=keyword_set(regular)
 
+;
+; The following determines if the level-resolved ionization/recombination
+; rates need to be used.
+;
 IF tag_exist(rates1.ion_data,'ionrec')  then begin 
   if n_elements(sum_mwl_coeffs) NE 0 THEN  status_ionrec=0 else $
      status_ionrec=1
-endif else status_ionrec=0 
+endif else status_ionrec=0
+;
+IF keyword_set(noionrec) THEN status_ionrec=0
+
 
 IF sumtst EQ 0 THEN BEGIN
  ;
