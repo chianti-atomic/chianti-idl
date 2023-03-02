@@ -45,10 +45,7 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ; OUTPUTS:
 ;	A plot object is created showing how the populations vary along the
 ;	isoelectronic sequence. The X-axis shows the atomic
-;	number. In addition,
-;	the routine prints information to the IDL command window
-;	showing which level has been found for each ion. The user
-;	should check to make sure the correct level has been selected.
+;	number. 
 ;
 ; RESTRICTIONS:
 ;	The routine assumes that the routine Ch_find_iso_level was
@@ -69,6 +66,9 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;          procedure to function (to return object).
 ;       Ver.4, 29-Jan-2022, Peter Young
 ;          LEVEL can now be an array.
+;       Ver.5, 02-Mar-2023, Peter Young
+;          The plot was not showing the input ion (IONNAME), so this has been
+;          fixed.
 ;-
 
 
@@ -149,7 +149,6 @@ ENDFOR
 
 
 IF NOT keyword_set(quiet) THEN BEGIN
-  k=where(outstr.element NE iz,nk) 
   w=window(dim=[700,500])
   ss=2.0
   fs=14
@@ -163,9 +162,10 @@ IF NOT keyword_set(quiet) THEN BEGIN
          font_size=14,_extra=extra,/xsty)
 
   FOR i=0,nlev-1 DO BEGIN
-    pl=plot(outstr[k].element,outstr[k].pop[i],th=th,/overplot)
-    FOR j=0,nk-1 DO  pt=text(/data,align=0.5,vertical_align=0.5, $
-                             outstr[k[j]].element,outstr[k[j]].pop[i], $
+    pl=plot(outstr.element,outstr.pop[i],th=th,/overplot)
+    n_ions=n_elements(outstr)
+    FOR j=0,n_ions-1 DO  pt=text(/data,align=0.5,vertical_align=0.5, $
+                             outstr[j].element,outstr[j].pop[i], $
                              trim(i+1),font_size=fs,target=p)
   ENDFOR
 
