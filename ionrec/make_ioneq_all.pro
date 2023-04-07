@@ -13,13 +13,14 @@
 ;	MAKE_IONEQ_ALL, Temp
 ;
 ; INPUTS:
+;       None.
+;
+; OPTIONAL INPUTS:
 ;       Temp:  1D array specifying the temperatures (in K) for which
 ;              the ion fraction curves are needed. If not
 ;              specified, then the default CHIANTI range of logT=4.0
 ;              to logT=9.0 in 0.05 dex intervals is 
 ;              used. 
-;
-; OPTIONAL INPUTS:
 ;       Outname:  The name of the output file. If not specified, then
 ;                 new ion fraction file is sent to 'new.ioneq'.
 ;       Density:  Specifies the electron number density (units: cm^-3)
@@ -53,21 +54,16 @@
 ;    Ver.4, 27-Jul-2017, Peter Young
 ;         added PRESSURE and DENSITY optional inputs; removed ION_RATE
 ;         and REC_RATE as they were'nt implemented properly;
-;         updated header. 
+;         updated header.
+;    Ver.5, 05-Apr-2023, Peter Young
+;         Previously the routine required TEMP to be specified. This is
+;         no longer needed.
 ;-
 
 
 PRO make_ioneq_all,temp,outname=outname, $
                    density=density, pressure=pressure
-;
-if n_params() lt 1 then begin
-   print,' > make_ioneq_all, temp, [outname = ]'
-   print, ' temp can be a single temperature or an array'
-   print, ' if the name of the output file is not specified by outname'
-   print, ' a file new.ioneq will be created that can be read by '
-   print, ' read_ioneq'
-   return
-endif
+
 ;
 ioneqmin=1.e-20
 ;
