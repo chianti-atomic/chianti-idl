@@ -26,15 +26,18 @@
 ;	
 ; KEYWORD PARAMETERS:
 ;    HYDROGEN: If set then the routine computes the ratio of hydrogen to 
-;              free electrons.
+;              free electrons (i.e., neutral hydrogen plus protons
+;              relative to electrons).
 ;    QUIET:  If set, then information messages will not be printed to
 ;            the IDL window.
 ;
 ; OUTPUTS:
 ;    An array of same size as TEMP containing the proton-to-electron
 ;    ratio. If /hydrogen is set, then the hydrogen-to-electron ratio
-;    is returned. If a problem is found, then a value of -1 is
-;    returned. 
+;    is returned (i.e., protons plus neutral hydrogen relative to
+;    electrons).
+;
+;    If a problem is found, then a value of -1 is returned. 
 ;
 ; CALLS:
 ;    READ_IONEQ, READ_ABUND
@@ -80,6 +83,11 @@
 ;    Ver.6, 07-Dec-2020, Peter Young
 ;       Added check on input parameters; removed the common block;
 ;       updated header; added /quiet keyword.
+;
+;    Ver.7, 17-Apr-2023, Peter Young
+;       Modified header to clarify that /hydrogen means that the
+;       ratio of neutral hydrogen and protons relative to electrons is
+;       computed. No change to code.
 ;-
 
 
