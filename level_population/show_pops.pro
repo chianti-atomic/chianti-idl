@@ -140,7 +140,10 @@
 ;
 ;       NOIONREC: If set, then level-resolved ionization and
 ;                 recombination rates will not be included in the
-;                 model. 
+;                 model.
+;
+;       NO_AUTO: Switches off autoionization rates, which prevents the two-ion
+;                model from being used (only relevant for a subset of the ions).
 ;
 ; CALLS:
 ;
@@ -222,8 +225,11 @@
 ;       v.22, 18 Nov 2018, GDZ
 ;              Now calls the new v.9 pop_solver
 ;
+;       v.23, 11 May 2023, Peter Young
+;              Added /no_auto keyword.
 ;
-; VERSION     :   22 , 18 Nov 2018
+;
+; VERSION     :   23 , 11 May 2023
 ;-
 
 PRO  SHOW_POPS, IZ, ION, popstr, DENS=DENS, TEMP=TEMP, RPHOT=RPHOT, $
@@ -231,7 +237,8 @@ PRO  SHOW_POPS, IZ, ION, popstr, DENS=DENS, TEMP=TEMP, RPHOT=RPHOT, $
                 N_LEVELS=N_LEVELS, RADTEMP=RADTEMP, DIEL=DIEL, $
                 IONEQ_FILE=IONEQ_FILE,ABUND_FILE=ABUND_FILE, $
                 SUM_MWL_COEFFS=SUM_MWL_COEFFS, RADFUNC=RADFUNC, $
-                LEVEL=LEVEL, QUIET=QUIET, NOIONREC=NOIONREC
+                LEVEL=LEVEL, QUIET=QUIET, NOIONREC=NOIONREC, $
+                no_auto=no_auto
 
 
 
@@ -240,7 +247,8 @@ IF N_PARAMS() LT 1 THEN BEGIN
   PRINT,'                           radtemp= , rphot= , path= , /noprot, '
   PRINT,'                           n_levels= , /diel, ioneq_file= , '
   PRINT,'                           abund_file= , level=, /noionrec '
-  print,'                           radfunc=, /quiet, sum_mwl_coeffs= ]'
+  print,'                           radfunc=, /quiet, sum_mwl_coeffs=, '
+  print,'                           /no_auto ]'
   RETURN
 ENDIF
 
@@ -302,7 +310,7 @@ IF n_elements(abund_file) EQ 0 THEN abund_file=!abund_file
 ;
 input=ch_setup_ion(gname,ioneq_file=ioneq_name,abund_file=abund_file, $
                    radtemp=radt,path=path,noprot=noprot,noionrec=noionrec, $
-                   rphot=rphot)
+                   rphot=rphot, no_auto=no_auto)
 
 
 ;

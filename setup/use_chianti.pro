@@ -103,7 +103,10 @@
 ;               v.15, 25-Mar-2020, Peter Young
 ;                    now sets $CHIANTI_LOOKUP
 ;
-; Version     : 15
+;               v.16, 05-May-2023, Peter Young
+;                    updated default abundance file to Asplund (2021).
+;
+; Version     : 16
 ;-            
 
 PRO  use_chianti, XUVTOP, ioneq=ioneq , abund=abund
@@ -206,7 +209,8 @@ ENDIF ELSE BEGIN
  ; onwards.
  ;
   CASE 1 OF
-    float(version) GE 9.0: abund = concat_dir(concat_dir(xuvtop, 'abundance'),'sun_photospheric_2015_scott.abund')
+    float(version) GE 10.1: abund = concat_dir(concat_dir(xuvtop, 'abundance'),'sun_photospheric_2021_asplund.abund')
+    float(version) GE 9.0 AND float(version) LT 10.1: abund = concat_dir(concat_dir(xuvtop, 'abundance'),'sun_photospheric_2015_scott.abund')
     float(version) LT 9.0 AND float(version) GE 7.1: abund = concat_dir(concat_dir(xuvtop, 'abundance'),'sun_photospheric_1998_grevesse.abund' )
     float(version) LT 7.1: abund = concat_dir(concat_dir(xuvtop, 'abundance'),'sun_photospheric.abund' )
     ELSE: 

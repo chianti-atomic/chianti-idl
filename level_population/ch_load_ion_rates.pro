@@ -121,8 +121,11 @@ function ch_load_ion_rates, input, temp, n_lev=n_lev, $
 ;        v.10, 5-Mar-2019, Peter Young
 ;          Added sumtst and sum_mwl_coeffs to the output structure as
 ;          they are needed by ch_load_2ion_rates.
+;        v.11, 12-May-2023, Peter Young
+;          Added /quiet for call to proton_dens; message about flipping
+;          transitions only printed if /verbose set.
 ;
-; VERSION     : 10
+; VERSION     : 11
 ;
 ;-
 
@@ -238,7 +241,8 @@ endif
 ; is no longer computed by ch_setup_ion.
 ;
   IF tag_exist(ion_data, 'pe_ratio') THEN  pe_ratio= ion_data.pe_ratio else $
-     pe_ratio=proton_dens(alog10(t),abund_file=abund_file, ioneq_file=ioneq_file)
+     pe_ratio=proton_dens(alog10(t),abund_file=abund_file, ioneq_file=ioneq_file, $
+                          /quiet)
 ;
 ; If pe_ratio is in the ion_data structure, then make sure it has the
 ; right size:
@@ -246,7 +250,8 @@ endif
   IF n_elements(pe_ratio) NE n_elements(t) THEN BEGIN
      print,'% WARNING, pe_ratio size does not match temp. It will be recomputed.'
      print,'             ',n_elements(pe_ratio),n_elements(t)
-     pe_ratio=proton_dens(alog10(t), ioneq_file=ioneq_file, abund_file=abund_file)
+     pe_ratio=proton_dens(alog10(t), ioneq_file=ioneq_file, abund_file=abund_file, $
+                          /quiet)
   ENDIF
 
 
@@ -375,7 +380,7 @@ endif
   i=where(delta_e LT 0.,ni)
   j=where(aa[i] GT 0.,nj)
   IF nj NE 0 THEN BEGIN
-     print,'%WARNING: ['+trim(gname)+'] - '+trim(nj)+$
+     IF keyword_set(verbose) THEN print,'%WARNING: ['+trim(gname)+'] - '+trim(nj)+$
            ' A-values have been assigned to inverse transitions. These have been flipped.'
      k=i[j]
                                 ;

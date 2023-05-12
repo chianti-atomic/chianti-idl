@@ -3,7 +3,7 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
                        noprot=noprot, path=path, radtemp=radtemp, rphot=rphot, $
                        abund_file=abund_file, quiet=quiet, noionrec=noionrec, $
                        obs_only=obs_only, index_wgfa=index_wgfa, no_auto=no_auto,$
-                       no_rrec=no_rrec
+                       no_rrec=no_rrec, opt_lookup=opt_lookup, n_levels=n_levels
 
 
 ;+
@@ -54,7 +54,11 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;       Path:    This directly specifies the path where the
 ;                ion's data files are stored. If not set, then
 ;                the files are taken from the user's CHIANTI
-;                distribution. 
+;                distribution.
+;       N_Levels: When computing INDEX_WGFA (see below), this restricts
+;                 the transitions included to those for which the upper
+;                 level is less than or equal to N_LEVELS. It does not
+;                 affect the size of the arrays in the output structure.
 ;
 ; KEYWORD PARAMETERS:
 ;
@@ -71,6 +75,11 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;                the .auto file) are not read.
 ;       NO_RREC: If set, do not read the level-resolved radiative
 ;                recombination (RR) files.
+;       OPT_LOOKUP: If set, then the routine will not load the electron
+;                spline fits, recombination/ionization data for
+;                autoionization rates. This is intended for calling
+;                ch_setup_ion from ch_synthetic when using the /lookup
+;                option and gives a significant time saving.
 ;
 ; OUTPUTS:
 ;       A structure with the tags:
@@ -150,6 +159,12 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;      Ver.10, 12-Nov-2020, Peter Young
 ;         Added the tag 'two_photon' to the output. This is the
 ;         optional structure returned by read_wgfa_str.
+;      Ver.11, 12-May-2023, Peter Young
+;         Added /opt_lookup option, which prepares a reduced output structure
+;         that is used by ch_synthetic and speeds up the synthetic spectrum
+;         calculation; now calls ch_setup_index_wgfa to obtain index_wgfa;
+;         index_wgfa is now modified if /no_auto is set (which usually
+;         reduces number of levels); added n_levels optional input.
 ;-
 
 
@@ -157,7 +172,7 @@ IF n_params() LT 1 THEN BEGIN
   print,'Use:  IDL> output = ch_setup_ion ( ion_name [, wvlmin=, wvlmax=, ioneq_file=, '
   print,'                                   /noionrec, /noprot, /quiet, abund_file=, '
   print,'                                   rphot=, radtemp=, path=, index_wgfa= '
-  print,'                                   /obs_only, /no_auto ])'
+  print,'                                   /obs_only, /no_auto, /opt_lookup, n_levels= ])'
   return,-1
 ENDIF
 
@@ -171,6 +186,7 @@ ENDIF ELSE BEGIN
   ENDIF 
 ENDELSE 
 
+
 IF N_ELEMENTS(path) NE 0 THEN fname = concat_dir(path, ions) $
                          ELSE ion2filename,ions,fname
 wname=fname+'.wgfa'
@@ -182,6 +198,11 @@ autoname=fname+'.auto'
 chck=file_search(wname,count=count1)
 chck=file_search(elvlcname,count=count2)
 chck=file_search(upsname,count=count3)
+
+;
+; dielectronic is an output here and is used for the /opt_lookup option.
+;
+ion2spectroscopic,ions,snote, dielectronic=dielectronic
 
 
 IF count1 eq 0 or count2 eq 0 or count3 eq 0 then begin 
@@ -197,28 +218,11 @@ convertname,ions,iz,ion
 ; ---------------
 read_wgfa_str,wname,wgfastr,two_photon=two_photon
 
+index_wgfa=ch_setup_index_wgfa(wgfastr,wvlmin=wvlmin,wvlmax=wvlmax, $
+                               obs_only=obs_only,count=count,levmax=n_levels)
 
-;
-; Use wvlmin and wvlmax to see if there are any lines in the requested
-; wavelength range.
-;
-IF keyword_set(obs_only) THEN wvlchck=wgfastr.wvl ELSE wvlchck=abs(wgfastr.wvl)
-;
-CASE 1 OF
-  n_elements(wvlmin) NE 0 AND n_elements(wvlmax) EQ 0: $
-     k=where(wvlchck GE wvlmin AND wgfastr.aval NE 0.,nk)
-  n_elements(wvlmin) EQ 0 AND n_elements(wvlmax) NE 0: $
-     k=where(wvlchck LE wvlmax AND wgfastr.aval NE 0.,nk)
-  n_elements(wvlmin) NE 0 AND n_elements(wvlmax) NE 0: $
-     k=where(wvlchck LE wvlmax AND wvlchck GE wvlmin AND wgfastr.aval NE 0.,nk)
-  ELSE: BEGIN
-    nk=n_elements(wgfastr.wvl)
-    k=lindgen(nk)
-  ENDELSE 
-ENDCASE
-index_wgfa=k
 
-IF nk EQ 0 THEN BEGIN
+IF count EQ 0 THEN BEGIN
   index_wgfa=-1
   IF NOT keyword_set(quiet) THEN print,'% CH_SETUP_ION: no transitions found for '+trim(ions)+'. Returning...'
   return,-1
@@ -264,7 +268,13 @@ ENDIF
 ;
 ; Read scups file to put collision data in SPLSTR
 ; ---------------
-read_scups, upsname, splstr
+IF NOT keyword_set(opt_lookup) OR dielectronic THEN BEGIN 
+  read_scups, upsname, splstr
+  splstr_levmax=max(splstr.data.lvl2)
+ENDIF ELSE BEGIN
+  splstr=0
+  splstr_levmax=-1
+ENDELSE 
 
 
 ;
@@ -289,6 +299,7 @@ output={ gname: ions, $
          two_photon: two_photon, $
          ioneq_file: ioneq_file}
 
+IF keyword_set(opt_lookup) THEN return,output
 
 ;
 ; Check for proton rates, and add structure to output
@@ -307,18 +318,20 @@ ENDIF
 ;
 ; Check for level-resolved ionization and recombination rates. 
 
- if file_exist(expand_path(fname+'.rrlvl')) and $ 
-  file_exist(expand_path(fname+'.reclvl')) then begin 
- print, 'ERROR ! both  .reclvl and .rrlvl files found ! '
- return, -1
-  end 
+if file_exist(expand_path(fname+'.rrlvl')) and $ 
+   file_exist(expand_path(fname+'.reclvl')) then begin 
+  print, 'ERROR ! both  .reclvl and .rrlvl files found ! '
+  return, -1
+end 
 
+rrec_levmax=-1
 IF NOT keyword_set(no_rrec) THEN BEGIN
-   rrec=read_rrlvl(fname, status)
+  rrec=read_rrlvl(fname, status)
   if status then begin 
      IF NOT keyword_set(quiet) THEN BEGIN
       print,'% CH_SETUP_ION: level-resolved radiative recombination rates added to output.'
     ENDIF 
+     rrec_levmax=max(rrec.final_level)
     output=add_tag(output,rrec,'rrec')
  endif 
 endif 
@@ -328,6 +341,7 @@ endif
 ; Check for level-resolved ionization and recombination rates. If they
 ; exist, then create ionrec structure and add it as a tag to output.
 ;
+ionrec_levmax=-1
 IF NOT keyword_set(noionrec) THEN BEGIN
   read_ionrec,fname,rec_rate,ci_rate,temp_ionrec,luprec,lupci,status
  ;
@@ -336,6 +350,7 @@ IF NOT keyword_set(noionrec) THEN BEGIN
       print,'% CH_SETUP_ION: level-resolved ionization & recombination rates added to output.'
     ENDIF 
    ;
+    ionrec_levmax=max([luprec,lupci])
     read_ioneq,ioneq_file,temp_all,ioneq,ioneq_ref
     IF ion GT 1 THEN ioneq_ionrec=reform(ioneq[*,iz-1,ion-2:ion])
     IF ion EQ 1 THEN ioneq_ionrec=reform(ioneq[*,iz-1,ion-1:ion])
@@ -378,15 +393,30 @@ ENDIF
 ;
 ; Add autoionization rates stored in the .auto files (if available).
 ;
+autostr_levmax=-1
 IF file_exist(autoname) AND NOT keyword_set(no_auto) THEN BEGIN 
   IF NOT keyword_set(quiet) THEN BEGIN
     print,'% CH_SETUP_ION: autoionization rates added to output.'
   ENDIF 
  ;
   read_auto, autoname, autostr=autostr
+  autostr_levmax=max(autostr.lvl2)
   output=add_tag(output,autostr,'autostr')
 ENDIF 
 
+levmax_all=[splstr_levmax,ionrec_levmax,rrec_levmax,autostr_levmax]
+k=where(levmax_all NE -1)
+levmax=max(levmax_all)
+IF n_elements(n_levels) NE 0 THEN levmax=min([n_levels,levmax])
+
+index_wgfa=ch_setup_index_wgfa(wgfastr,wvlmin=wvlmin,wvlmax=wvlmax, $
+                               obs_only=obs_only,count=count, levmax=levmax)
+
+IF count EQ 0 THEN BEGIN
+  index_wgfa=-1
+  IF NOT keyword_set(quiet) THEN print,'% CH_SETUP_ION: no transitions found for '+trim(ions)+'. Returning...'
+  return,-1
+ENDIF 
 
 
 return,output

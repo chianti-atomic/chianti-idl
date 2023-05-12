@@ -355,6 +355,10 @@
 ;       NO_RREC: If set, do not read the level-resolved radiative
 ;                recombination (RR) files.
 ;
+;       NO_AUTO: If set, do not include autoionization in the level population
+;                calculations (this will speed up routine, but X-ray line
+;                intensities may be affected).
+;
 ;       LOOKUP:  If set, then routine will attempt to use the CHIANTI
 ;                lookup tables to obtain level populations, rather
 ;                than call pop_solver. This leads to a much quicker
@@ -647,7 +651,13 @@
 ;            Removed references to /all keyword as it doesn't
 ;            do anything (all lines are included by default). The
 ;            keyword is retained, however, for backwards
-;            compatibility. 
+;            compatibility.
+;          v.54, 12-May-2023, Peter Young
+;            Added /lookup option to ch_setup_ion call in order to
+;            speed up routine; added /no_auto option; introduced levmax
+;            for lookup tables; print statements only in /verbose set;
+;            passed /verbose to ch_setup_ion; removed /verbose from
+;            pop_solver as information not useful.
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -679,7 +689,8 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
       noprot=noprot, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC, progress=progress, $
                   no_sum_int=no_sum_int,  group=group,frac_cutoff=frac_cutoff, $
                   noionrec=noionrec, no_rrec=no_rrec, lookup=lookup, $
-                  regular=regular, sparse=sparse, lapack=lapack
+                  regular=regular, sparse=sparse, lapack=lapack, $
+                  no_auto=no_auto
 
 
 
@@ -1333,13 +1344,37 @@ nd=n_elements(dens)  ; number of densities
            STOP
          ENDIF 
 
+        ;
+        ; PRY, 12-May-2023
+        ; I've moved the population lookup table here so that I can create
+        ; "levmax" which is then input to ch_setup_ion. This is just in
+        ; case the lookup table has less levels than the wgfa structure.
+        ;
+         junk=temporary(levmax)  ; make sure levmax does not exist
+         no_lookup=1-keyword_set(lookup)
+         IF keyword_set(lookup) THEN BEGIN
+           p=ch_lookup_table_interp(gname,dens,temp,/quiet,/pad)
+           IF n_tags(p) EQ 0 THEN BEGIN
+             no_lookup=1
+             print,'% CH_SYNTHETIC: lookup tables not found. Using standard method...'
+           ENDIF ELSE BEGIN 
+             pops=rearrange(p.pop,[2,1,3])
+             s=size(pops,/dim)
+             levmax=s[2]
+             pops2=dblarr(s[0],s[2])
+             FOR i=0,s[0]-1 DO pops2[i,*]=pops[i,i,*]
+             pops=temporary(pops2)
+           ENDELSE
+         ENDIF
+         
          input=ch_setup_ion(gname,rphot=rphot,radtemp=radtemp,noprot=noprot, $
                             ioneq_file=ioneq_file,abund_file=abund_file,path=path, $
-                            quiet=quiet, $
+                            quiet=1b-keyword_set(verbose), $
                             wvlmin=wmin,wvlmax=wmax, index_wgfa=anylines, $
-                            noionrec=noionrec )
-
-
+                            noionrec=noionrec, no_auto=no_auto , no_rrec=no_rrec, $
+                            opt_lookup=lookup,n_levels=levmax)
+           
+         
         IF anylines[0] EQ -1 THEN BEGIN 
           IF  keyword_set(verbose) THEN  $
              print, 'No lines in the selected range for Ion '+snote+' !!!'
@@ -1378,8 +1413,7 @@ nn=n_elements(anylines)
 
          END 
 
-;         IF KEYWORD_SET(verbose) THEN 
-        print,'% CH_SYNTHETIC: calculating  '+snote+' ('+trim(nn)+' lines)'
+         IF KEYWORD_SET(verbose) THEN print,'% CH_SYNTHETIC: calculating  '+snote+' ('+trim(nn)+' lines)'
 
         ;
         ; Extract items from the elvlc structure
@@ -1426,26 +1460,12 @@ nn=n_elements(anylines)
 ; population, which get omitted from the lookup tables, thus the
 ; population array ends up a different size to the pop_solver
 ; array. The /pad keyword makes them the same size.
+; PRY, 12-May-2023: the lookup section has been moved earlier.
 ;---------------------------------------------------------
-
-         no_lookup=1-keyword_set(lookup)
-         IF keyword_set(lookup) THEN BEGIN 
-           p=ch_lookup_table_interp(gname,dens,temp,/quiet,/pad)
-           IF n_tags(p) EQ 0 THEN BEGIN
-             no_lookup=1
-             print,'% CH_SYNTHETIC: lookup tables not found. Using standard method...'
-           ENDIF ELSE BEGIN 
-             pops=rearrange(p.pop,[2,1,3])
-             s=size(pops,/dim)
-             pops2=dblarr(s[0],s[2])
-             FOR i=0,s[0]-1 DO pops2[i,*]=pops[i,i,*]
-             pops=temporary(pops2)
-           ENDELSE
-         ENDIF
 
          IF keyword_set(no_lookup) THEN BEGIN
             pop_solver, input,temp,dens,pops,/pressure,radfunc=radfunc, frac_cutoff=frac_cutoff, $
-                        verbose=verbose, regular=regular, sparse=sparse, lapack=lapack
+                        regular=regular, sparse=sparse, lapack=lapack
          ENDIF 
 
 
