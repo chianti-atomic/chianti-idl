@@ -69,6 +69,8 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;       Ver.5, 02-Mar-2023, Peter Young
 ;          The plot was not showing the input ion (IONNAME), so this has been
 ;          fixed.
+;       Ver.6, 07-Apr-2023, Peter Young
+;          I now list the levels on the right side of the plot.
 ;-
 
 
@@ -90,6 +92,7 @@ nlev=n_elements(level)
 ; Read the search ion data into the structure 'str'
 ;
 zion2filename,iz,ion,fname
+z2element,iz-ion+1,iso_elt
 elvlcname=fname+'.elvlc'
 ;
 read_elvlc,elvlcname,elvlcstr=str
@@ -118,55 +121,67 @@ outstr=0
 FOR i=diff+1+i_neut,30 DO BEGIN
   zion2name,i,i-diff,iname
   k=where(trim(iname) EQ mlist,nk)
-  IF nk NE 0 THEN BEGIN
+  IF nk eq 0 THEN continue
 
-    str.ion=iname
-    str.element=i
-    str.spect=i-diff
-
-    l=lonarr(nlev)
-    FOR j=0,nlev-1 DO BEGIN 
-      l[j]=ch_find_iso_level(iname,ionname,level[j],/quiet,outlev=outlev,config_match=config_match)
-    ENDFOR
-    str.lev=l
+  str.ion=iname
+  str.element=i
+  str.spect=i-diff
+  l=lonarr(nlev)
+  FOR j=0,nlev-1 DO BEGIN 
+    l[j]=ch_find_iso_level(iname,ionname,level[j],/quiet,outlev=outlev,config_match=config_match)
+  ENDFOR
+  str.lev=l
     
-    tmax=ch_tmax(iname)
-    IF keyword_set(lookup) THEN BEGIN
-      pop=ch_lookup_pops(iname,ldens=ldens,temp=tmax)
-    ENDIF ELSE BEGIN
-      pop=ch_pops(iname,ldens=ldens,temp=tmax,/quiet)
-    ENDELSE
+  tmax=ch_tmax(iname)
+  IF keyword_set(lookup) THEN BEGIN
+    pop=ch_lookup_pops(iname,ldens=ldens,temp=tmax)
+  ENDIF ELSE BEGIN
+    pop=ch_pops(iname,ldens=ldens,temp=tmax,/quiet)
+  ENDELSE
 
-    ind=where(l NE -1,nind)
-    IF nind NE 0 THEN str.pop[ind]=pop.level[l-1].pop
+  str.pop=!values.f_nan
+  ind=where(l NE -1,nind)
+  IF nind NE 0 THEN str.pop[ind]=pop.level[l[ind]-1].pop
     
-;    IF NOT keyword_set(quiet) THEN print,format='(5x,a5,2x,a15,e10.2)',iname,outlev,str.pop
-     ;
-    IF n_tags(outstr) EQ 0 THEN outstr=str ELSE outstr=[outstr,str]
-  ENDIF
+  IF n_tags(outstr) EQ 0 THEN outstr=str ELSE outstr=[outstr,str]
 ENDFOR 
 
-
+x0=0.10
+x1=0.75
+y0=0.10
+y1=0.90
+pos=[x0,y0,x1,y1]
 
 IF NOT keyword_set(quiet) THEN BEGIN
-  w=window(dim=[700,500])
+  w=window(dim=[850,500])
   ss=2.0
   fs=14
   xrange=[min(outstr.element)-1,max(outstr.element)+1]
-  yrange=[min(outstr.pop),max(outstr.pop)]
+  yrange=[min(outstr.pop,/nan),max(outstr.pop,/nan)]
 
+  title=iso_elt+' sequence'
   p=plot(/nodata, xrange, $
          yrange,  $
          ytitle='Level population', $
          xtitle='Atomic number',/current,xticklen=0.020,yticklen=0.015,/ylog, $
-         font_size=14,_extra=extra,/xsty)
+         font_size=fs,_extra=extra,/xsty, $
+         title=title,pos=pos)
 
   FOR i=0,nlev-1 DO BEGIN
-    pl=plot(outstr.element,outstr.pop[i],th=th,/overplot)
+    pop=outstr.pop[i]
+    k=where(finite(pop))
+   ;
+    pl=plot(outstr[k].element,pop[k],th=th,/overplot)
     n_ions=n_elements(outstr)
-    FOR j=0,n_ions-1 DO  pt=text(/data,align=0.5,vertical_align=0.5, $
-                             outstr[j].element,outstr[j].pop[i], $
-                             trim(i+1),font_size=fs,target=p)
+    FOR j=0,n_ions-1 DO BEGIN
+      IF outstr[j].pop[i] NE 0. THEN BEGIN 
+        pt=text(/data,align=0.5,vertical_align=0.5, $
+                outstr[j].element,outstr[j].pop[i], $
+                trim(i+1),font_size=fs,target=p)
+      ENDIF
+    ENDFOR 
+    ltxt=text(x1+0.02,0.95-i*0.06,trim(i+1)+' - '+outstr[0].latex[i], $
+              font_size=fs-2,target=p,vertical_align=1.0)
   ENDFOR
 
   p.xrange=xrange
