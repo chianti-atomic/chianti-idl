@@ -145,6 +145,9 @@
 ;       NO_AUTO: Switches off autoionization rates, which prevents the two-ion
 ;                model from being used (only relevant for a subset of the ions).
 ;
+;       VERBOSE: A pass-through keyword to pop_solver to print extra information
+;                about the population calculation.
+;
 ; CALLS:
 ;
 ;	ZION2FILENAME, POP_SOLVER, CONCAT_DIR, CH_SETUP_ION, CH_TMAX 
@@ -228,8 +231,11 @@
 ;       v.23, 11 May 2023, Peter Young
 ;              Added /no_auto keyword.
 ;
+;       v.24, 18 May 2023, Peter Young
+;              Added /verbose keyword.
 ;
-; VERSION     :   23 , 11 May 2023
+;
+; VERSION     :   24 , 18 May 2023
 ;-
 
 PRO  SHOW_POPS, IZ, ION, popstr, DENS=DENS, TEMP=TEMP, RPHOT=RPHOT, $
@@ -238,7 +244,7 @@ PRO  SHOW_POPS, IZ, ION, popstr, DENS=DENS, TEMP=TEMP, RPHOT=RPHOT, $
                 IONEQ_FILE=IONEQ_FILE,ABUND_FILE=ABUND_FILE, $
                 SUM_MWL_COEFFS=SUM_MWL_COEFFS, RADFUNC=RADFUNC, $
                 LEVEL=LEVEL, QUIET=QUIET, NOIONREC=NOIONREC, $
-                no_auto=no_auto
+                no_auto=no_auto, verbose=verbose
 
 
 
@@ -248,7 +254,7 @@ IF N_PARAMS() LT 1 THEN BEGIN
   PRINT,'                           n_levels= , /diel, ioneq_file= , '
   PRINT,'                           abund_file= , level=, /noionrec '
   print,'                           radfunc=, /quiet, sum_mwl_coeffs=, '
-  print,'                           /no_auto ]'
+  print,'                           /no_auto, /verbose ]'
   RETURN
 ENDIF
 
@@ -350,7 +356,7 @@ ENDIF
 
 
 pop_solver,input, 10.^temp,10.^dens,pop,n_levels=n_levels, $
-     sum_mwl_coeffs=smc, radfunc=radfunc
+     sum_mwl_coeffs=smc, radfunc=radfunc, verbose=verbose
 
 
 pop=pop(0,0,*)
