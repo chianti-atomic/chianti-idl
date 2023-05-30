@@ -234,8 +234,11 @@
 ;       v.24, 18 May 2023, Peter Young
 ;              Added /verbose keyword.
 ;
+;       v.25, 24 May 2023, Peter Young
+;              Now passes /quiet keyword to ch_setup_ion.
 ;
-; VERSION     :   24 , 18 May 2023
+;
+; VERSION     :   25 , 24 May 2023
 ;-
 
 PRO  SHOW_POPS, IZ, ION, popstr, DENS=DENS, TEMP=TEMP, RPHOT=RPHOT, $
@@ -316,7 +319,7 @@ IF n_elements(abund_file) EQ 0 THEN abund_file=!abund_file
 ;
 input=ch_setup_ion(gname,ioneq_file=ioneq_name,abund_file=abund_file, $
                    radtemp=radt,path=path,noprot=noprot,noionrec=noionrec, $
-                   rphot=rphot, no_auto=no_auto)
+                   rphot=rphot, no_auto=no_auto, quiet=quiet)
 
 
 ;

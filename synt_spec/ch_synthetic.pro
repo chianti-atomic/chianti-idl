@@ -658,6 +658,8 @@
 ;            for lookup tables; print statements only in /verbose set;
 ;            passed /verbose to ch_setup_ion; removed /verbose from
 ;            pop_solver as information not useful.
+;          v.55, 24-May-2023, Peter Young
+;            Fixed bug when passing /lookup to ch_setup_ion.
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1372,7 +1374,7 @@ nd=n_elements(dens)  ; number of densities
                             quiet=1b-keyword_set(verbose), $
                             wvlmin=wmin,wvlmax=wmax, index_wgfa=anylines, $
                             noionrec=noionrec, no_auto=no_auto , no_rrec=no_rrec, $
-                            opt_lookup=lookup,n_levels=levmax)
+                            opt_lookup=1b-no_lookup,n_levels=levmax)
            
          
         IF anylines[0] EQ -1 THEN BEGIN 
@@ -1802,7 +1804,7 @@ OUTPUT = {lines:str2, $
           add_protons:add_protons, $
           date: systime(), $
           version:version, $
-          lookup: keyword_set(lookup), $
+          lookup: 1b-no_lookup, $
           photoexcitation:photoexcitation}
 
 IF photoexcitation THEN begin
