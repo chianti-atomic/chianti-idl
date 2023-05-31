@@ -39,6 +39,8 @@ PRO ch_web_linelists
 ;
 ; MODIFICATION HISTORY:
 ;      Ver.1, 08-Jun-2022, Peter Young
+;      Ver.2, 31-May-2023, Peter Young
+;        Chnaged abundance file to !abund_file.
 ;-
 
 
@@ -57,8 +59,7 @@ IF chck.exists EQ 0 THEN BEGIN
   return
 ENDIF 
 
-abund_name=concat_dir(!xuvtop,'abundance')
-abund_name=concat_dir(abund_name,'sun_photospheric_2015_scott.abund')
+abund_name=!abund_file
 chck=file_info(abund_name)
 IF chck.exists EQ 0 THEN BEGIN
   message,/info,/cont,'The abundance file was not found. Returning...'
