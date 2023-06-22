@@ -1,61 +1,58 @@
+
+PRO zion2spectroscopic,iz,ion,snote, dielectronic=dielectronic
+
+
 ;+
-;
-; PROJECT:  CHIANTI
-;
-;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
-;       Astrophysical Plasmas. It is a collaborative project involving the Naval
-;       Research Laboratory (USA), the University of Florence (Italy), the
-;       University of Cambridge and the Rutherford Appleton Laboratory (UK). 
-;
-;
 ; NAME:
 ;	ZION2SPECTROSCOPIC
 ;
 ; PURPOSE:
-;
-;
-;	provide identification strings
+;       Convert an atomic number and spectroscopic number pair to an ion name
+;       in spectroscopic format.
 ;
 ; CATEGORY:
-;
-;	database.
+;       CHIANTI; convert.
 ;
 ; CALLING SEQUENCE:
-;
-;       ZION2SPECTROSCOPIC, Iz, Ion, Name
-;
+;	ZION2SPECTROSCOPIC, IZ, ION
 ;
 ; INPUTS:
-;
 ;	Iz:  nuclear charge of ion of interest, i.e. 26 for Fe
 ;       Ion:   charge state of ion of interest, i.e. 2 for Fe II	
 ;
+; OPTIONAL INPUTS:
+;	Parm2:	Describe optional inputs here. If you don't have any, just
+;		delete this section.
+;	
+; KEYWORD PARAMETERS:
+;       DIELECTRONIC:  If set, then a "d" is appended to the ion name to
+;                      denote that it is a dielectronic ion.
 ;
 ; OUTPUTS:
+;       The name of the ion in spectroscopic format. For example,
+;       'Fe XXII' or 'O VI'.
 ;
-;	Name:  the spectroscopic notation for the ion, i.e. 'Fe II'
+; SIDE EFFECTS:
 ;
+; RESTRICTIONS:
 ;
+; PROCEDURE:
 ;
 ; EXAMPLE:
-;
-;             > zion2spectroscopic,26,2,name
-;             > print,name
-;             > Fe II   
-;
-; WRITTEN     :  Ken Dere
+;       IDL> zion2spectroscopic,26,2,name
+;       IDL> zion2spectroscopic,26,2,name,/diel
 ;
 ; MODIFICATION HISTORY:
-;
-;	March 1996:     Version 2.0
+;	V.2, Mar-1996, Ken Dere
 ;
 ;       V.3, 25-May-2002, Giulio Del Zanna (GDZ)
 ;            added the DIELECTRONIC keyword.
 ;
-; VERSION     : 3, 25-May-2002
-;
+;       V.4, 12-Jun-2023, Peter Young
+;            Used the trim routine to get rid of redundant spaces.
 ;-
-pro zion2spectroscopic,iz,ion,snote, dielectronic=dielectronic
+
+
 ;
 ;  convert z, ion to spectroscopic notation
 ;
@@ -68,15 +65,15 @@ if n_params() lt 2 then begin
    return
 end
 ;
-element=['H','He','Li','Be','B ','C ','N ','O ','F ','Ne','Na','Mg','Al','Si',$
-         'P ','S ','Cl','Ar','K ','Ca','Sc','Ti','V ','Cr','Mn','Fe','Co','Ni',$
+element=['H','He','Li','Be','B','C','N','O','F','Ne','Na','Mg','Al','Si',$
+         'P','S ','Cl','Ar','K ','Ca','Sc','Ti','V ','Cr','Mn','Fe','Co','Ni',$
          'Cu','Zn']
 ;
 ionstage=['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII','XIII',$
          'XIV','XV','XVI','XVII','XVIII','XIX','XX','XXI',' XXII','XXIII','XXIV',$
          'XXV','XXVI','XXVII','XXVIII','XXIX','XXX','XXXI']
 ;
-snote=element(iz-1)+' '+ionstage(ion-1)
+snote=trim(element(iz-1))+' '+trim(ionstage(ion-1))
 
 IF keyword_set(dielectronic) THEN snote = snote+' d'
 ;

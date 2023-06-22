@@ -165,6 +165,8 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;         calculation; now calls ch_setup_index_wgfa to obtain index_wgfa;
 ;         index_wgfa is now modified if /no_auto is set (which usually
 ;         reduces number of levels); added n_levels optional input.
+;      Ver.12, 12-Jun-2023, Peter Young
+;         Populates the new diel tag of wgfastr.
 ;-
 
 
@@ -281,6 +283,18 @@ ENDELSE
 ; Get ionization potential in cm^-1 units.
 ; ---------------------------------------
 ip=ch_ip(ions,/cm)
+
+;
+; Populate the diel tag in wgfastr.
+;
+k=where(ecm GT ip,ndr)
+IF ndr GT 0 THEN BEGIN
+  drlev=l1a[k]
+  FOR i=0,ndr-1 DO BEGIN 
+    j=where(wgfastr.lvl2 EQ drlev[i],nj)
+    IF nj NE 0 THEN wgfastr[j].diel=1b
+  ENDFOR 
+ENDIF 
 
 ;
 ; Initially create the "core" structure, i.e., containing the

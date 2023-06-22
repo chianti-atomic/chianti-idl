@@ -161,8 +161,11 @@
 ;           Added comment to state if population lookup tables were used for
 ;           the calculation; added MAX_INT= optional output.
 ;
+;        v.11, 13-Jun-2023, Peter Young
+;           Satellite lines are now marked with an "s" next to the ion name.
 ;
-; VERSION     : 10, 8-Jun-2022
+;
+; VERSION     : 11, 13-Jun-2023
 ;
 ;-
 pro ch_line_list, transitions, outname, latex=latex, ascii=ascii, $
@@ -467,8 +470,10 @@ printf,luo, ' '
      printf,luo,'\large\bf{Effective area file:} \verb|'+fef+'| \\'
 
 
+   printf,luo,'\large\bf{Lines marked with a ``s" are satellite lines from autoionizing levels.} \\'
+
    IF keyword_set(ALL) THEN BEGIN 
-      printf,luo,'\large\bf{Lines marked with a * do not have correspondent observed energy levels} \\'
+      printf,luo,'\large\bf{Lines marked with a * do not have observed energy levels} \\'
       printf,luo,'\large\bf{and have approximate wavelengths.} \\'
    END
 

@@ -660,6 +660,10 @@
 ;            pop_solver as information not useful.
 ;          v.55, 24-May-2023, Peter Young
 ;            Fixed bug when passing /lookup to ch_setup_ion.
+;          v.56, 13-Jun-2023, Peter Young
+;            Lines coming from autoionizing levels are now flagged with
+;            "s" (for satellite) in the lines.snote tag. The dielectronic
+;            ("d") ions are no longer flagged with d in snote.
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1186,6 +1190,7 @@ FOR ilist=0,nlist-1 DO BEGIN
    gname=mlist[ilist]
    convertname,gname,iz,ion
    ion2spectroscopic,gname,snote, dielectronic=dielectronic
+   zion2spectroscopic,iz,ion,snote
    
 ;convert z and ionisation stage to filename 
 ;(eg z=26, ion=24 > !xuvtop/fe/fe_24 ) :
@@ -1379,14 +1384,14 @@ nd=n_elements(dens)  ; number of densities
          
         IF anylines[0] EQ -1 THEN BEGIN 
           IF  keyword_set(verbose) THEN  $
-             print, 'No lines in the selected range for Ion '+snote+' !!!'
-          msg =  [msg, 'No lines in the selected range for Ion '+snote+' !!!']
+             print, 'No lines in the selected range for Ion '+gname+' !!!'
+          msg =  [msg, 'No lines in the selected range for Ion '+gname+' !!!']
        ENDIF
  
      ENDIF    ELSE BEGIN
         IF  keyword_set(verbose) THEN  $
-           print, 'No Temperature overlap for Ion '+snote+' !!!'
-        msg =  [msg, 'No Temperature overlap for Ion '+snote+' !!!']
+           print, 'No Temperature overlap for Ion '+gname+' !!!'
+        msg =  [msg, 'No Temperature overlap for Ion '+gname+' !!!']
         anylines = -1
       ENDELSE
 
@@ -1410,12 +1415,12 @@ nn=n_elements(anylines)
          IF keyword_set(progress) THEN BEGIN
 
             info_progress, pct,lastpct,pctage, pct_slider_id,$
-              interrupt_id,halt,quiet, 'Calculating  '+snote+' ('+trim(nn)+' lines)',  group=group
+              interrupt_id,halt,quiet, 'Calculating  '+gname+' ('+trim(nn)+' lines)',  group=group
             IF halt THEN GOTO,halt
 
          END 
 
-         IF KEYWORD_SET(verbose) THEN print,'% CH_SYNTHETIC: calculating  '+snote+' ('+trim(nn)+' lines)'
+         IF KEYWORD_SET(verbose) THEN print,'% CH_SYNTHETIC: calculating  '+gname+' ('+trim(nn)+' lines)'
 
         ;
         ; Extract items from the elvlc structure
@@ -1433,6 +1438,7 @@ nn=n_elements(anylines)
          lvl2=input.wgfastr.lvl2
          wvl1=input.wgfastr.wvl
          a_value1=input.wgfastr.aval
+         diel=input.wgfastr.diel
 
         ;
         ; Extract electron collision structure
@@ -1629,6 +1635,14 @@ nn=n_elements(anylines)
              t_list_ion = ion+intarr(nn)
              t_list_snote = replicate(snote,nn)
              t_list_tmax = tmax
+            ;
+            ; PRY, 13-Jun-2023
+            ; The following flags the satellite lines in snote by making
+            ; use of the diel tag of wgfastr.
+            ;
+             t_list_diel=diel[anylines]
+             k=where(t_list_diel EQ 1,nk)
+             IF nk NE 0 THEN t_list_snote[k]=t_list_snote[k]+' s'
 
              IF NOT keyword_set(goft) THEN BEGIN
                IF keyword_set(no_sum_int) AND n_elements(logt_isothermal) NE 0 THEN BEGIN
@@ -1675,8 +1689,8 @@ nn=n_elements(anylines)
 
     ENDIF  ELSE BEGIN                   ;  ion present in ion fraction file                                ;
       IF  keyword_set(verbose) THEN  $
-         print, 'Ion '+snote+' not present in the Ion. Frac. file!!!'
-      msg =  [msg, 'Ion '+snote+' not present in the Ion. Frac. file!!!']
+         print, 'Ion '+gname+' not present in the Ion. Frac. file!!!'
+      msg =  [msg, 'Ion '+gname+' not present in the Ion. Frac. file!!!']
     END 
 
   ENDFOR                          ;  reading masterlist.ions

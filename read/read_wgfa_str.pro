@@ -45,6 +45,8 @@ PRO read_wgfa_str, wgfaname, wgfastr, ref, only_avals=only_avals, two_photon=two
 ;          .gf    The weighted oscillator strength.
 ;          .aval  The radiative decay rate (s^-1).
 ;          .auto  The autoionization rate (s^-1).
+;          .diel  (Byte) Flag to indicate if line is a dielectronic
+;                 satellite line. This is populated by ch_setup_ion.
 ;
 ; OPTIONAL OUTPUTS:
 ;    Ref:  A string array containing the file references.
@@ -70,6 +72,8 @@ PRO read_wgfa_str, wgfaname, wgfastr, ref, only_avals=only_avals, two_photon=two
 ;        /only_avals keyword.
 ;    Ver.4, 12-Nov-2020, Peter Young
 ;        Added two_photon= optional output.
+;    Ver.5, 12-Jun-2023, Peter Young
+;        Added the diel tag to output.
 ;-
 
 
@@ -138,7 +142,7 @@ ENDELSE
 ; This defines the output structure which contains an extra tag for
 ; the autoionization rate.
 ;
-str2={lvl1: 0, lvl2: 0, wvl: 0d, gf: 0d, aval: 0d, auto: 0d}
+str2={lvl1: 0, lvl2: 0, wvl: 0d, gf: 0d, aval: 0d, auto: 0d, diel: 0b}
 wgfastr=replicate(str2,ndata)
 
 wgfastr.lvl1=readstr.lvl1
