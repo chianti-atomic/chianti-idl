@@ -664,6 +664,8 @@
 ;            Lines coming from autoionizing levels are now flagged with
 ;            "s" (for satellite) in the lines.snote tag. The dielectronic
 ;            ("d") ions are no longer flagged with d in snote.
+;          v.57, 22-Jun-2023, Peter Young
+;            Modified definition of t_index for the /goft case.
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1053,6 +1055,8 @@ ENDIF    ; log T isothermal
 ;check that we have some overlap in T:
 ;---------------------------------------
 
+
+
 IF model_name EQ  'Function' THEN  BEGIN 
    IF n_elements(logt_isothermal) EQ 0 THEN BEGIN
       IF keyword_set(goft) THEN BEGIN 
@@ -1252,8 +1256,13 @@ FOR ilist=0,nlist-1 DO BEGIN
                t_index=WHERE(this_ioneq NE 0. AND $
                              (ioneq_logt GE min(alog10(temperature))) AND $
                              (ioneq_logt LE  max(alog10(temperature))) )
-            ENDIF ELSE BEGIN 
-               t_index=WHERE(this_ioneq NE 0.)
+             ENDIF ELSE BEGIN
+              ;
+              ; PRY, 22-Jun-2023:
+              ; Modified t_index due to problems with Li-sequence ions.
+              ;
+;               t_index=WHERE(this_ioneq NE 0.)
+               t_index=WHERE(this_ioneq GE this_ioneq/1e6)
             ENDELSE 
 
          ENDIF ELSE BEGIN 

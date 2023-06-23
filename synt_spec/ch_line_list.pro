@@ -164,8 +164,11 @@
 ;        v.11, 13-Jun-2023, Peter Young
 ;           Satellite lines are now marked with an "s" next to the ion name.
 ;
+;        v.12, 22-Jun-2023, Peter Young
+;           The output T_max is now given to two decimal places.
 ;
-; VERSION     : 11, 13-Jun-2023
+;
+; VERSION     : 12, 22-Jun-2023
 ;
 ;-
 pro ch_line_list, transitions, outname, latex=latex, ascii=ascii, $
@@ -746,7 +749,7 @@ for j=0L,nlines-1 do begin
       ion = transitions.lines(i).snote 
       if flag(i)  EQ -1  then ion=ion+' *'
 
-      IF   isothermal THEN  item1='-' ELSE   item1=string(tmax(i),'(f4.1)')
+      IF   isothermal THEN  item1='-' ELSE   item1=trim(string(tmax(i),'(f5.2)'))
 
 ;
       if keyword_set(photons) then begin

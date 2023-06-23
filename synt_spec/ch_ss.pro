@@ -529,13 +529,15 @@
 ;          display the spectrum.
 ;       V.21, 11-Dec-2020, Peter Young
 ;          Changed dem_int to double-precision.
+;       V.22, 23-Jun-2023, Peter Young
+;          The Tmax given in the text widget is now given to two decimal places.
 ;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.21, 11-Dec-2020
+; VERSION     :  V.22, 23-Jun-2023
 ;
 ;-
 PRO restore_spectrum
@@ -1076,7 +1078,7 @@ IF  test THEN BEGIN
  spectrum.int_units +' )  '
 
                IF spectrum.lines[ind[i]].tmax NE 0.  THEN line_str[i] = line_str[i]+  $
-                 '  log Tm [K]='+STRING(format='(f4.1)', spectrum.lines[ind[i]].tmax)
+                 '  log Tm [K]='+trim(STRING(format='(f5.2)', spectrum.lines[ind[i]].tmax))
 
                line_str[i] = line_str[i] +$
                  '   '+strtrim(spectrum.lines[ind[i]].ident, 2)

@@ -215,7 +215,12 @@
 ;             these temperatures. (Previously the routine just exited
 ;             if any temperatures were outside the range.)
 ;
-; VERSION     :   17, 21-Feb-2014
+;       V.18, 23-Jun-2023, Peter Young
+;             For the lithium sequence there were some transitions with
+;             contribution functions that were zero, which caused problems.
+;             I now ignore these transitions.
+;
+; VERSION     :   18, 23-Jun-2023
 ;
 ;-
 pro gofnt, ions, wmin, wmax, temperature, gof, description,$
@@ -311,14 +316,16 @@ END
 
 ;;
 ;; PRY, 22-Aug-2008
-;; I've added nn=mm which changes the value of nn if mm is smaller.
-;;
+;;  I've added nn=mm which changes the value of nn if mm is smaller.
+;; PRY, 22-Jun-2023
+;;  I now catch the case where the goft is zero for all temps.
 FOR  i=0,nlist-1 DO  BEGIN
-   index = where(TRANSITIONS.lines[i].goft GT 0, mm)
-   IF mm LT nn THEN BEGIN
-     good_t = index
-     nn=mm
-   ENDIF
+  goft=transitions.lines[i].goft
+  index = where(goft GT 0, mm)
+  IF mm LT nn AND total(goft) NE 0. THEN BEGIN
+    good_t = index
+    nn=mm
+  ENDIF
 ENDFOR 
 
 

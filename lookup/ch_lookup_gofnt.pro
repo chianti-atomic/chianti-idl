@@ -104,6 +104,9 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ; 
 ; MODIFICATION HISTORY:
 ;      Ver.1, 18-Dec-2019, Peter Young
+;      Ver.2, 22-Jun-2022, Peter Young
+;        The absolute value of the wavelength is used to compute the
+;        transition energy to prevent negative G(T) values.
 ;-
 
 
@@ -279,7 +282,7 @@ FOR j=0,nu-1 DO BEGIN
   IF ilev[0] NE -1 THEN BEGIN 
     pop=reform(popstr.pop[*,*,ilev])
    ;
-    IF NOT keyword_set(photons) THEN energy=1.986e-8/wvl[j] ELSE energy=1.0
+    IF NOT keyword_set(photons) THEN energy=1.986e-8/abs(wvl[j]) ELSE energy=1.0
    ;
    ; If log_press was specified, then pop will be a 2D array and we need
    ; to take the diagonal of this array. Otherwise pop will be a 1D
