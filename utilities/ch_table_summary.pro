@@ -1,5 +1,6 @@
 
-FUNCTION ch_table_summary, reverse=reverse, states=states, reduced=reduced, all=all
+FUNCTION ch_table_summary, reverse=reverse, states=states, reduced=reduced, $
+                           all=all, simple=simple
 
 
 
@@ -30,6 +31,9 @@ FUNCTION ch_table_summary, reverse=reverse, states=states, reduced=reduced, all=
 ;               shown.
 ;     ALL:      If set, then all elements are shown, including those
 ;               for which we don't have any data.
+;     SIMPLE:   If set, then the table entries are filled circles
+;               rather than the number of levels for the ion, and
+;               there are no colors.
 ;
 ; OUTPUTS:
 ;     Returns an IDL plot object containing the table. The table can
@@ -39,18 +43,15 @@ FUNCTION ch_table_summary, reverse=reverse, states=states, reduced=reduced, all=
 ;      IDL> w.save,'ch_table_summary.pdf'
 ;      IDL> w.save,'ch_table_summary.png',resolution=192
 ;
-;     The routine also creates a save file in the current working
-;     directory containing the numbers of levels for each ion. When
-;     the routine is called a second time, the save file greatly
-;     speeds up the time to run the routine. The file has the name
-;     "levels_v[ver].save", where [ver] is the CHIANTI version
-;     number. For example, "9.0".
-;
 ; CALLS:
-;     SHOW_POPS, CH_GET_VERSION, CONVERTNAME
+;     CH_GET_VERSION, CONVERTNAME, CH_LOOKUP_TABLE_INTERP
 ;
 ; MODIFICATION HISTORY:
-;     Ver.1.0, 21-Mar-2019, Peter Young
+;     Ver.1, 21-Mar-2019, Peter Young
+;     Ver.2, 29-Jun-2023, Peter Young
+;       Now uses the lookup tables to speed up the routine; added
+;       /simple keyword to give a more simple table; no longer
+;       creates a save file containing the ion level numbers.
 ;-
 
 
@@ -144,14 +145,27 @@ FOR i=0,nel-1 DO BEGIN
   FOR j=0,ni-1 DO BEGIN
     ionname=strlowcase(element[i])+'_'+trim(j+1)
     convertname,ionname,iz,ion
-    IF ion LE iz THEN BEGIN
-      IF chck.exists THEN BEGIN
-        mlev=lev_array[iz-1,ion-1]
-      ENDIF ELSE BEGIN 
-        show_pops,iz,ion,popstr,/quiet
-        IF n_tags(popstr) EQ 0 THEN lev_array[iz-1,ion-1]=0 ELSE lev_array[iz-1,ion-1]=max(popstr.level.index)
-      ENDELSE
-      mlev=lev_array[iz-1,ion-1]
+    
+    IF ion GT iz THEN continue
+    
+    p=ch_lookup_table_interp(ionname,1e10,ch_tmax(ionname),/quiet)
+    IF n_tags(p) NE 0 THEN BEGIN
+      s=size(p.pop,/dim)
+      mlev=s[2]
+    ENDIF ELSE BEGIN
+      mlev=0
+    ENDELSE 
+    
+    IF keyword_set(simple) THEN BEGIN
+      q=plot(j+[0.5,1.5,1.5,0.5,0.5],xra[1]-i-0.5+[-0.5,-0.5,0.5,0.5,-0.5], $
+             /overplot,thick=th)
+      IF mlev GT 0 THEN BEGIN
+        xpos=j+1
+        ypos=nel-i
+        s=plot(/overplot,xpos*[1,1],ypos*[1,1],symbol='o',/sym_filled,sym_size=1)
+      ENDIF 
+    ENDIF ELSE BEGIN 
+    
       IF mlev EQ 0 THEN label='-' ELSE label=trim(mlev)
       IF mlev GT 0 THEN BEGIN
         CASE 1 OF
@@ -160,13 +174,13 @@ FOR i=0,nel-1 DO BEGIN
           mlev LE 10: col=bcol1
         ENDCASE
         q=plot(j+[0.5,1.5,1.5,0.5,0.5],xra[1]-i-0.5+[-0.5,-0.5,0.5,0.5,-0.5], $
-                 fill_color=col,/overplot,fill_background=1,color=color,thick=th)
+               fill_color=col,/overplot,fill_background=1,color=color,thick=th)
       ENDIF ELSE BEGIN
         q=plot(j+[0.5,1.5,1.5,0.5,0.5],xra[1]-i-0.5+[-0.5,-0.5,0.5,0.5,-0.5], $
                /overplot,color=color,thick=th)
       ENDELSE 
       t1=text(j+1,nel-i-0.25,label,align=0.5,font_size=fs2,color=color,/data)
-    ENDIF
+    ENDELSE 
   ENDFOR
 ENDFOR
 
@@ -199,18 +213,19 @@ ENDIF
 
 
 t2=text(x0-0.5,y0+1,'Ions in CHIANTI '+ver,font_size=fs+2,/data,color=color)
-b1=plot(x0+[0,1,1,0,0],y0-1+[0,0,1,1,0],fill_background=1,fill_color=bcol1, $
-        thick=th,color=color,/overplot)
-b2=plot(x0+[0,1,1,0,0],y0-1-1.2+[0,0,1,1,0],fill_background=1,fill_color=bcol2, $
-        thick=th,color=color,/overplot)
-b3=plot(x0+[0,1,1,0,0],y0-1-2.4+[0,0,1,1,0],fill_background=1,fill_color=bcol3, $
-        thick=th,color=color,/overplot)
-bt1=text(x0+1.5,y0-0.7,'$\le$ 10 '+levstring,font_size=fs,/data,color=color)
-bt2=text(x0+1.5,y0-1.2-0.7,'< 100 '+levstring,font_size=fs,/data,color=color)
-bt3=text(x0+1.5,y0-2.4-0.7,'$\ge$ 100 '+levstring,font_size=fs,/data,color=color)
 
+IF ~ keyword_set(simple) THEN BEGIN 
+  b1=plot(x0+[0,1,1,0,0],y0-1+[0,0,1,1,0],fill_background=1,fill_color=bcol1, $
+          thick=th,color=color,/overplot)
+  b2=plot(x0+[0,1,1,0,0],y0-1-1.2+[0,0,1,1,0],fill_background=1,fill_color=bcol2, $
+          thick=th,color=color,/overplot)
+  b3=plot(x0+[0,1,1,0,0],y0-1-2.4+[0,0,1,1,0],fill_background=1,fill_color=bcol3, $
+          thick=th,color=color,/overplot)
+  bt1=text(x0+1.5,y0-0.7,'$\le$ 10 '+levstring,font_size=fs,/data,color=color)
+  bt2=text(x0+1.5,y0-1.2-0.7,'< 100 '+levstring,font_size=fs,/data,color=color)
+  bt3=text(x0+1.5,y0-2.4-0.7,'$\ge$ 100 '+levstring,font_size=fs,/data,color=color)
+ENDIF 
 
-IF NOT chck.exists THEN save,file=savefile,lev_array
 
 return,w
 
