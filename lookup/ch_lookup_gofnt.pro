@@ -27,12 +27,18 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ;                listed in the widget.
 ;      Log_Temp: A 1D array of Log10 temperatures. If not specified,
 ;                then the temperature array in the lookup table will be used.
-;      Log_Dens: A scalar specifying the Log10 of the electron number
-;                density. Either log_dens or log_press should be
+;      Log_Dens: Log10 of electron number density. If a scalar is given,
+;                then the density will apply to all of the temperatures.
+;                If an array of same size as log_temp is given, then the
+;                population is calculated at each temperature with the
+;                matching density. Either log_dens or log_press should be
 ;                defined. 
-;      Log_Press: A scalar specifying the Log10 of the electron
-;                 pressure (N_e*T). Either log_dens or log_press
-;                 should be defined.
+;      Log_Press: Log10 of electron pressure (N_e*T). If a scalar is given,
+;                then the pressure will apply to all of the temperatures.
+;                If an array of same size as log_temp is given, then the
+;                population is calculated at each temperature with the
+;                matching pressure. Either log_dens or log_press should be
+;                defined. 
 ;      Abund_File: The name of  CHIANTI format element abundance
 ;                 file. If not specified then the user is asked to
 ;                 choose a file with a widget.
@@ -81,6 +87,7 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ;      .abund_file  Name of the element abundance file.
 ;      .ioneq_file  Name of the ionization balance file.
 ;      .chianti_version  The version of CHIANTI that was used.
+;      .ion    Name of the ion.
 ;      .time_stamp  The time at which the structure was created.
 ;
 ; CALLS:
@@ -107,6 +114,9 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ;      Ver.2, 22-Jun-2022, Peter Young
 ;        The absolute value of the wavelength is used to compute the
 ;        transition energy to prevent negative G(T) values.
+;      Ver.3, 27-Sep-2023, Peter Young
+;        Modified to allow density and pressure to be arrays, but they
+;        must match the size of the temperature array.
 ;-
 
 
@@ -199,32 +209,28 @@ IF n_elements(log_temp) EQ 0 THEN BEGIN
 ENDIF
 nt=n_elements(log_temp)
 
+nd=n_elements(log_dens) 
+np=n_elements(log_press)
 
-IF n_elements(log_dens) NE 0 AND n_elements(log_press) NE 0 THEN BEGIN
-  print,'% CH_LOOKUP_GOFNT: please specify EITHER log_dens OR log_press. Returning...'
+IF (nd NE 0 AND np NE 0) OR (nd EQ 0 AND np EQ 0) THEN BEGIN
+  message,/cont,/info,'please specify EITHER log_dens OR log_press. Returning...'
   return,-1
 ENDIF
+
+  
+
 ;
-IF n_elements(log_dens) GT 1 OR n_elements(log_press) GT 1 THEN BEGIN
-  print,'% CH_LOOKUP_GOFNT: log_dens (or log_press) must be a scalar. Returning...'
-  return,-1.
-ENDIF
+; ch_lookup_table_interp takes only dens as an input, so convert pressure to dens.
 ;
-IF n_elements(log_dens) EQ 0 AND n_elements(log_press) EQ 0 THEN BEGIN
-  print,'% CH_LOOKUP_GOFNT: Please specify either LOG_DENS or LOG_PRESS. Returning...'
+IF np NE 0 THEN ldens=log_press-log_temp ELSE ldens=log_dens
+nd=n_elements(log_dens) 
+
+IF nd GT 1 AND nd NE nt THEN BEGIN
+  message,/info,/cont,'If pressure or density are given as an array, they must have the same size as the temperature array. Returning...'
   return,-1
 ENDIF 
 
-IF n_elements(log_dens) NE 0 THEN ldens=log_dens
-
-;
-; Note that log_dens will be a 1D array in this case.
-;
-IF n_elements(log_press) NE 0 THEN ldens=log_press-log_temp
-
-
-
-
+IF np NE 0 OR nd GT 1 THEN diag_swtch=1b else diag_swtch=0b
  
 ;
 ; If /noabund has not been set, then read the abundance file. Note
@@ -288,7 +294,7 @@ FOR j=0,nu-1 DO BEGIN
    ; to take the diagonal of this array. Otherwise pop will be a 1D
    ; array. 
    ;
-    IF n_elements(log_press) NE 0 THEN pop=diag_matrix(pop)
+    IF diag_swtch THEN pop=diag_matrix(pop)
     contrib_data=contrib_data + energy*pop*frac*aval[j]/10.^ldens/4./!pi
   ENDIF ELSE BEGIN
     print,'% CH_LOOKUP_GOFNT: Upper level '+trim(l2)+' (wavelength: '+trim(string(wvl[j],format='(f15.2)'))+') not found in lookup table.'
@@ -308,6 +314,7 @@ output={ ltemp: log_temp, $
          abund_file: abund_file, $
          ioneq_file: ioneq_file, $
          chianti_version: popstr.chianti_version, $
+         ion: trim(ionname), $
          time_stamp: systime() }
 
 
