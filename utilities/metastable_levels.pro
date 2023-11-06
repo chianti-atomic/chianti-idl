@@ -73,8 +73,8 @@ ENDIF
 ;
 ; If an array of densities is given, then the maximum density is used.
 ;
-IF n_elements(density) EQ 0 THEN density=1e10
-IF n_elements(density) GT 1 THEN density=max(density)
+IF n_elements(density) EQ 0 THEN dens=1e10
+IF n_elements(density) GT 1 THEN dens=max(density)
 
 ;
 ; This defines the cutoff, above which a level is considered to be a
@@ -138,7 +138,7 @@ FOR i=1,n DO BEGIN
     meta[i-1]=1b
   ENDIF ELSE BEGIN
     amax=max(str[k].aval+str[k].auto)
-    IF density/amax*exp_de_kt[i-1]*kt_sqrt/wgt[i-1] GE cutoff THEN meta[i-1]=1b
+    IF dens/amax*exp_de_kt[i-1]*kt_sqrt/wgt[i-1] GE cutoff THEN meta[i-1]=1b
   ENDELSE
 ENDFOR
 

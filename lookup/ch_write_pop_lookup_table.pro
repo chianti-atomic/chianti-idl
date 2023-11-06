@@ -107,6 +107,8 @@ PRO ch_write_pop_lookup_table, ion_name, $
 ;         Fixed error in header; now checks if the lookup table
 ;         already exists and will not overwrite it unless /overwrite
 ;         is specified.
+;      Ver.3, 06-Nov-2023, Peter Young
+;         Added density input in the call to metastable_levels.
 ;-
 
 
@@ -231,7 +233,7 @@ ENDIF
 ;
 ; Identify metastable levels.
 ;
-metastable_levels,ion_name,meta,/quiet
+metastable_levels,ion_name,meta,/quiet,dens=dens
 
 ;
 ; Load atomic data for input to pop_solver
