@@ -1,6 +1,7 @@
 
 PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
-                       quiet=quiet, density=density
+                       quiet=quiet, density=density, wgfastr=wgfastr, $
+                       elvlcstr=elvlcstr
 
 ;+
 ; NAME:
@@ -73,8 +74,7 @@ ENDIF
 ;
 ; If an array of densities is given, then the maximum density is used.
 ;
-IF n_elements(density) EQ 0 THEN dens=1e10
-IF n_elements(density) GT 1 THEN dens=max(density)
+IF n_elements(density) EQ 0 THEN dens=1e10 ELSE dens=max(density)
 
 ;
 ; This defines the cutoff, above which a level is considered to be a
