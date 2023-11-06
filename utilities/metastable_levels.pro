@@ -119,9 +119,9 @@ IF diel THEN BEGIN
 ENDIF 
 
 
-read_elvlc,elvlcname,elvlc=elvlc
-e_ev=elvlc.data.energy/8065.54
-wgt=elvlc.data.weight
+read_elvlc,elvlcname,l1,term,conf,ss,ll,jj,ecm,eryd,ecmth,erydth,ref,elvlc=elvlcstr
+e_ev=elvlcstr.data.energy/8065.54
+wgt=elvlcstr.data.weight
 
 kt=ch_tmax(ionname)*8.617e-5
 
