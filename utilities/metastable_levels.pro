@@ -1,17 +1,19 @@
 
-PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, quiet=quiet
+PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
+                       quiet=quiet, density=density
 
 ;+
 ; NAME:
 ;    METASTABLE_LEVELS
 ;
 ; PURPOSE:
-;    Given a CHIANTI .wgfa file this routine works out which levels
-;    will be metastable and stores the result in META. A metastable
-;    level is defined by whether it has an A-value greater than
-;    CUTOFF. If yes, then the level is not metastable; if no then it
-;    is metastable. The autoionization rate is included in the check
-;    if necessary.
+;    This routine calculates which of an ion's levels are expected
+;    to be metastables, based on data from the elvlc and wgfa files
+;    (i.e., without having to solve the level balance equations).
+;    The calculation comes from the coronal approximation, whereby
+;    the excited level is assumed to be populated only from the
+;    ground (with population 1) by a transition with collision
+;    strength 1. 
 ;
 ; CATEGORY:
 ;    CHIANTI; utility.
@@ -23,9 +25,9 @@ PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, quiet=quiet
 ;    Ionname:   Ion name in CHIANTI format. E.g., 'fe_13' for Fe XIII.
 ;
 ; OPTIONAL INPUTS:
-;    Cutoff:   Metastable levels are identified according to whether they
-;              have at least one A-value that is > CUTOFF. The default for
-;              CUTOFF is 10^5 s^-1.
+;    Cutoff:   Cutoff for determining which levels are metastable. The
+;              default is 5e4. Decreasing the cutoff will give more
+;              metastable levels.
 ;    Path:     By default the routine looks in the user's
 ;              CHIANTI distribution for the .wgfa file. Setting PATH
 ;              allows you to directly specify a directory containing
@@ -57,15 +59,36 @@ PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, quiet=quiet
 ;    Ver.4, 2-Aug-2019, Peter Young
 ;      moved read_elvlc inside if statement; now check whether the sum
 ;      of A-value + autoionization rate is greater than cutoff.
+;    Ver.5, 06-Nov-2023, Peter Young
+;      Major revision to routine so that it more accurately works
+;      out potential metastables using the coronal approximation.
 ;-
 
 
 IF n_params() LT 1 THEN BEGIN
-  print,'Use: IDL> metastable_levels, ionname, meta [, cutoff=, path=, /quiet]'
+  print,'Use: IDL> metastable_levels, ionname, meta [, density=, cutoff=, path=, /quiet]'
   return
 ENDIF
 
+;
+; If an array of densities is given, then the maximum density is used.
+;
+IF n_elements(density) EQ 0 THEN density=1e10
+IF n_elements(density) GT 1 THEN density=max(density)
+
+;
+; This defines the cutoff, above which a level is considered to be a
+; metastable. Decreasing cutoff will lead to more metastables.
+; I chose the value below by comparing the actual metastables with the
+; estimated metastables for densities of 1e8, 1e10 and 1e13. All
+; metastables with populations with populations within a factor 100
+; of the most populated level were correctly found. 
+;
+IF n_elements(cutoff) EQ 0 THEN cutoff=5e4
+
 convertname,ionname,iz,ion,diel=diel
+
+
 IF n_elements(path) EQ 0 THEN BEGIN 
   zion2filename,iz,ion,filename,diel=diel
   wgfaname=filename+'.wgfa'
@@ -75,18 +98,35 @@ ENDIF ELSE BEGIN
   elvlcname=concat_dir(path,ionname+'.elvlc')
 ENDELSE 
 
-IF n_elements(cutoff) EQ 0 THEN cutoff=1e5
-chck=file_search(wgfaname)
-IF chck[0] EQ '' THEN BEGIN
+chck=file_info(wgfaname)
+IF chck.exists EQ 0 THEN BEGIN
   meta=-1
-  print,'%METASTABLE_LEVELS: .wgfa file can not be found. Returning...'
+  message,/info,/cont,'The .wgfa file can not be found. Returning...'
   return
 ENDIF
 read_wgfa_str,wgfaname,str,ref
 
-n=max(str.lvl2)
 
+n=max(str.lvl2)
 meta=bytarr(n)
+
+;
+; For the dielectronic models there are no metastables.
+;
+IF diel THEN BEGIN
+  meta[0]=1b
+  return
+ENDIF 
+
+
+read_elvlc,elvlcname,elvlc=elvlc
+e_ev=elvlc.data.energy/8065.54
+wgt=elvlc.data.weight
+
+kt=ch_tmax(ionname)*8.617e-5
+
+exp_de_kt=exp(-e_ev/kt)
+kt_sqrt=sqrt(13.606/kt)
 
 ;
 ; PRY, 2-Aug-2019: I now sum aval and auto to fix a problem for fe_11d
@@ -98,13 +138,12 @@ FOR i=1,n DO BEGIN
     meta[i-1]=1b
   ENDIF ELSE BEGIN
     amax=max(str[k].aval+str[k].auto)
-    IF amax LT cutoff THEN meta[i-1]=1b
+    IF density/amax*exp_de_kt[i-1]*kt_sqrt/wgt[i-1] GE cutoff THEN meta[i-1]=1b
   ENDELSE
 ENDFOR
 
 
 IF NOT keyword_set(quiet) THEN BEGIN 
-  read_elvlc,elvlcname,l1,term,conf,ss,ll,jj,ecm,eryd,ecmth,erydth,ref
   k=where(meta EQ 1,nk)
   print,'Metastable levels are: '
   FOR i=0,nk-1 DO BEGIN
