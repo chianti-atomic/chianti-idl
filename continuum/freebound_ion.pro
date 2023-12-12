@@ -83,6 +83,9 @@ PRO freebound_ion, temp, wvl, int, iz, ion, ip=ip, vdata=vdata, pe=pe, $
 ;          Updated header; no change to code.
 ;      Ver.7, 12-Feb-2020, Peter Young
 ;          Removed call to read_klgfb.
+;      Ver.8, 07-Dec-2023, Peter Young
+;          For conversion to keV, I changed indgen to lindgen due to
+;          errors if there are too many wavelength bins.
 ;-
 
 
@@ -204,6 +207,7 @@ IF ind[0] NE -1 THEN BEGIN
   int[ind]=exp(lrad+f[ind])*1d40/4d0/!pi
 ENDIF
 
+
 ;
 ; multiply int by the hc/E^2 factor if /kev set
 ;
@@ -213,10 +217,11 @@ IF keyword_set(kev) THEN BEGIN
  ;
  ; reverse the wavelength dimension to match energy ordering rather than
  ; wavelength ordering
-  int=int[reverse(indgen(nwvl)),*]
+  int=int[reverse(lindgen(nwvl)),*]
  ;
  ; and set wavelengths back to energy units
   wvl=wvl_save
 ENDIF
+
 
 END

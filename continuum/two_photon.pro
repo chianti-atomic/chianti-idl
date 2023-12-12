@@ -268,6 +268,10 @@
 ;            The /lookup option has been implemented; fixed a minor
 ;            bug whereby the 2-photon level was hard-coded to index 3
 ;            when computing the transition energy.
+;
+;       Ver.26, 07-Dec-2023, Peter Young
+;            For conversion to keV, I changed indgen to lindgen due to
+;            errors if there are too many wavelength bins.
 ;-
 
 pro two_photon,temperature,wvl,rad, no_setup=no_setup, $
@@ -775,7 +779,7 @@ IF keyword_set(kev) THEN BEGIN
  ;
  ; reverse the wavelength dimension to match energy ordering rather than
  ; wavelength ordering
-  rad=rad[reverse(indgen(nwvl)),*]
+  rad=rad[reverse(lindgen(nwvl)),*]
  ;
  ; and set wavelengths back to energy units
   wvl=wvl_save

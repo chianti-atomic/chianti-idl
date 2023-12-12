@@ -135,6 +135,10 @@ PRO itoh, temp, wvl, int, sumt=sumt, dem_int=dem_int, $
 ;
 ;    Ver.8, 19-Aug-2019, Peter Young
 ;            Removed references to 'no_setup'; tidied up header.
+;
+;    Ver.9, 07-Dec-2023, Peter Young
+;            For conversion to keV, I changed indgen to lindgen due to
+;            errors if there are too many wavelength bins.
 ;-
 
 
@@ -399,7 +403,7 @@ IF keyword_set(kev) THEN BEGIN
  ;
  ; reverse the wavelength dimension to match energy ordering rather than
  ; wavelength ordering
-  int=int[reverse(indgen(nw)),*]
+  int=int[reverse(lindgen(nw)),*]
  ;
  ; and set wavelengths back to energy units
   wvl=wvl_save

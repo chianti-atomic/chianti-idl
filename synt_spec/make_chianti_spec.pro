@@ -348,6 +348,10 @@ on_error,0
 ;               v.33, 22-Jan-2021, Peter Young
 ;                 Modified lookup implementation to make use of the
 ;                 input structure tag.
+;
+;               v.34, 07-Dec-2023, Peter Young
+;                 Switched indgen to lindgen for definition of binsize
+;                 in case there are a large number of wavelength points.
 ;-
 
 IF  n_params() lt 3 then begin
@@ -584,7 +588,7 @@ ENDIF ELSE BEGIN
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;GDZ
-   binsize[0:n_elements(LAMBDA)-2]= lambda[1+indgen(n_elements(LAMBDA)-1)]-lambda[indgen(n_elements(LAMBDA)-1)]
+   binsize[0:n_elements(LAMBDA)-2]= lambda[1+lindgen(n_elements(LAMBDA)-1)]-lambda[lindgen(n_elements(LAMBDA)-1)]
 ;   FOR i=0L, n_elements(LAMBDA)-2 DO $ 
 ;     binsize[i] =  lambda[i+1]-lambda[i]
 
