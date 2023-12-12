@@ -174,7 +174,7 @@ PRO freefree, temp, wvl, int, sumt=sumt, dem_int=dem_int, $
 ;    v.11, 19-Aug-2019, Peter Young
 ;          Updated header; deleted some old, commented-out code;
 ;          removed references to no_setup.
- ;-
+;-
 
 
 IF n_params() lt 3 then begin
