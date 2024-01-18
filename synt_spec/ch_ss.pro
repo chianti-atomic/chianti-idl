@@ -531,13 +531,15 @@
 ;          Changed dem_int to double-precision.
 ;       V.22, 23-Jun-2023, Peter Young
 ;          The Tmax given in the text widget is now given to two decimal places.
+;       v.23, 18-Jan-2024, Peter Young
+;          Fixed bug when reading abundance files in the new archive directory.
 ;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.22, 23-Jun-2023
+; VERSION     :  V.23, 18-Jan-2024
 ;
 ;-
 PRO restore_spectrum
@@ -1128,14 +1130,15 @@ COMMON calc_int, int_xrange, const_names, const_nt, const_value, $
   ioneqfile, ioneqdir, demfile, demdir, iso_logt, iso_logem, isothermal_flag, $
   all_ions_yn, list_ions, units, noprot,photoexcitation, rphot, radtemp
 
-
-IF  file_exist(concat_dir(concat_dir(!xuvtop,'abundance'), abfile)) THEN $
-  abdir = concat_dir(!xuvtop, 'abundance') ELSE cd, current=abdir
-abund_name =concat_dir(abdir, abfile)
-
+;
+; PRY, 18-Jan-2024: commented out line below as it prevents files in the
+; abundance/archive folder being read.
+;
+;IF  file_exist(concat_dir(concat_dir(!xuvtop,'abundance'), abfile)) THEN $
+;  abdir = concat_dir(!xuvtop, 'abundance') ELSE cd, current=abdir
+abund_name=concat_dir(abdir,abfile)
 read_abund,abund_name,abund,abund_ref
 
-; IF NOT file_exist(abund_name)
 
 IF theor_lines THEN all = 1 ELSE all = 0
 
@@ -2592,10 +2595,13 @@ CASE 1 OF
             WIDGET_CONTROL,state.ab_show,set_value=''
          END 
 
-         '1':BEGIN 
-            abund_name = dialog_pickfile(filter='*abund', tit='Select appropiate ABUNDANCE file to READ')
+         '1':BEGIN
+           abund_path=concat_dir(!xuvtop,'abundance')
+           abund_name = dialog_pickfile(filter='*abund', $
+                                        title='Select appropiate ABUNDANCE file to READ', $
+                                       path=abund_path)
 ;            abund_name = BIGPICKFILE(filter='*abund', tit='Select appropiate ABUNDANCE file to READ')
-            IF abund_name NE '' THEN BEGIN 
+            IF abund_name NE '' THEN BEGIN
                break_file, abund_name, disk, abdir, abfile, ext
                abdir = concat_dir(disk, abdir)
                abfile = abfile+ext
