@@ -187,7 +187,6 @@ FOR i=0,nel-1 DO BEGIN
 ENDFOR
 
 
-;r=plot(/overplot,[0.5,1.5],xra[1]*[1,1],th=th,color=color)
 
 ;
 ; Plots the element symbols on the Y-axis.
@@ -203,7 +202,10 @@ FOR i=0,ni-1 DO BEGIN
   ep=plot([0.+i-1.2,i+.5],[-1.2,0.5],th=th,/overplot,color=color)
 ENDFOR
 
-
+;
+; Slight adjustments to the x- and y-range to make the lines at the top
+; and right side of the grid appear correctly.
+;
 p.yrange=p.yrange+[0,0.2]
 p.xrange=p.xrange+[0,0.2]
 
