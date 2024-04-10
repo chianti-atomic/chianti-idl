@@ -52,6 +52,8 @@ FUNCTION ch_table_summary, reverse=reverse, states=states, reduced=reduced, $
 ;       Now uses the lookup tables to speed up the routine; added
 ;       /simple keyword to give a more simple table; no longer
 ;       creates a save file containing the ion level numbers.
+;     Ver.3, 10-Apr-2024, Peter Young
+;       Fixed problem of missing lines at top and right of grid.
 ;-
 
 
@@ -148,9 +150,9 @@ FOR i=0,nel-1 DO BEGIN
     
     IF ion GT iz THEN continue
     
-    p=ch_lookup_table_interp(ionname,1e10,ch_tmax(ionname),/quiet)
-    IF n_tags(p) NE 0 THEN BEGIN
-      s=size(p.pop,/dim)
+    pop=ch_lookup_table_interp(ionname,1e10,ch_tmax(ionname),/quiet)
+    IF n_tags(pop) NE 0 THEN BEGIN
+      s=size(pop.pop,/dim)
       mlev=s[2]
     ENDIF ELSE BEGIN
       mlev=0
@@ -174,7 +176,7 @@ FOR i=0,nel-1 DO BEGIN
           mlev LE 10: col=bcol1
         ENDCASE
         q=plot(j+[0.5,1.5,1.5,0.5,0.5],xra[1]-i-0.5+[-0.5,-0.5,0.5,0.5,-0.5], $
-               fill_color=col,/overplot,fill_background=1,color=color,thick=th)
+                fill_color=col,/overplot,fill_background=1,thick=th)
       ENDIF ELSE BEGIN
         q=plot(j+[0.5,1.5,1.5,0.5,0.5],xra[1]-i-0.5+[-0.5,-0.5,0.5,0.5,-0.5], $
                /overplot,color=color,thick=th)
@@ -184,6 +186,8 @@ FOR i=0,nel-1 DO BEGIN
   ENDFOR
 ENDFOR
 
+
+;r=plot(/overplot,[0.5,1.5],xra[1]*[1,1],th=th,color=color)
 
 ;
 ; Plots the element symbols on the Y-axis.
@@ -198,6 +202,10 @@ FOR i=0,ni-1 DO BEGIN
   etxt=text(/data,i-0.4,-1.2,ionstage[i],align=0.,orient=angle,font_size=fs,color=color)
   ep=plot([0.+i-1.2,i+.5],[-1.2,0.5],th=th,/overplot,color=color)
 ENDFOR
+
+
+p.yrange=p.yrange+[0,0.2]
+p.xrange=p.xrange+[0,0.2]
 
 
 
