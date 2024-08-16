@@ -29,8 +29,11 @@
 ;
 ; Modified:    v.2, GDZ, 18-Sept-2015  changed the default
 ;               photospheric abundance file to avoid crash with v.8
+;              v.2, GDZ, 5 Nov 2023
+;               ask to select a file if the Asplund is not available.
 ;
-; VERSION     :  2, 18-Sept-2015
+;
+; VERSION     :  3
 ;
 ;-
 
@@ -46,7 +49,10 @@ COMMON elements, abund,abund_ref, ioneq,ioneq_logt,ioneq_ref
 
 ;read the  photospheric values:
 
-abund_name =!xuvtop+'/abundance/sun_photospheric_2009_asplund.abund'
+abund_name =!xuvtop+'/abundance/sun_photospheric_2021_asplund.abund'
+if not file_exist(abund_name) then $
+   abund_name = ch_get_file(path=!xuvtop+'/abundance', filter='*.abund',  title=' Select a file with photospheric abundances!')
+
 read_abund,abund_name,abund_phot,abund_ref
 
 

@@ -2,9 +2,8 @@
 ; PROJECT     : CHIANTI
 ;
 ;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
-;       Astrophysical Plasmas. It is a collaborative project involving the Naval
-;       Research Laboratory (USA), the University of Florence (Italy), the
-;       University of Cambridge and the Rutherford Appleton Laboratory (UK). 
+;       Astrophysical Plasmas. It is a collaborative project involving the
+;       University of Cambridge,  Goddard Space Flight Center, and University of Michigan. 
 ;
 ;                   
 ; NAME        : CH_GET_FILE
@@ -80,7 +79,10 @@
 ;                 Fixed a bug when using Windows, the returned path was not
 ;                 correct. 
 ;
-; VERSION     :  7,  3-Nov-03
+;              v.8 15 May 2024  Giulio Del Zanna
+;                  reinstated the group leader.
+;
+; VERSION     :  8
 ;
 ;
 ;-
@@ -271,7 +273,7 @@ done=widget_button(cs2,UVALUE='D',VALUE='OK', xsize=10)
 ;
 widget_control,get_ab_base,/realize
 
-xmanager,'ch_get_ab',get_ab_base ; , modal=modal, group_leader=group_leader
+xmanager,'ch_get_ab',get_ab_base  , modal=modal, group_leader=group_leader
 
 
 ;--------END OF THE WIDGET  STUFF-----------------------------------------

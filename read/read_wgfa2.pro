@@ -3,11 +3,7 @@
 ; PROJECT:  CHIANTI
 ;
 ;       CHIANTI is an atomic database package for the calculation of
-;       continuum and emission line spectra from astrophysical plasmas. It is a 
-;       collaborative project involving the Naval Research Laboratory
-;       (Washington DC, USA), the Arcetri Observatory (Firenze, Italy), and the
-;       Cambridge University (United Kingdom).
-;
+;       continuum and emission line spectra from astrophysical plasmas. 
 ;
 ; NAME:
 ;	READ_WGFA2
@@ -67,8 +63,10 @@
 ;       V.5, 26-May-09, Peter Young
 ;        Modified the way references are read.
 ;
+;       v.6, 3-June-2024 GDZ, increased  the size of the arrays for large models.
+;
 ;          
-; VERSION     :  5, 26-May-09
+; VERSION     :  6, 3-June-2024
 ;
 ;-
 pro read_wgfa2,filename,lvl1,lvl2,wvl,gf,a_value,ref
@@ -96,11 +94,14 @@ ename=filename
 ;
 openr,lue,ename,/get_lun
 ;
-lvl1=intarr(500000)             
-lvl2=intarr(500000)            
-wvl=fltarr(500000)            
-gf=fltarr(500000)            
-a_value=fltarr(500000)      
+
+nlev=1900000
+
+lvl1=intarr(nlev)             
+lvl2=intarr(nlev)            
+wvl=fltarr(nlev)            
+gf=fltarr(nlev)            
+a_value=fltarr(nlev)      
 ;
 ;
 ;

@@ -1,10 +1,14 @@
 ;+
 ; PROJECT
 ;
+;        Part of this program was developed within CHIANTI-VIP. 
+;        CHIANTI-VIP (Virtual IDL and Python) is  a member of the CHIANTI family
+;        mantained by Giulio Del Zanna, to develop additional features and
+;        provide them to the astrophysics community.
+;
 ;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
-;       Astrophysical Plasmas. It is a collaborative project involving the Naval
-;       Research Laboratory (USA), the University of Florence (Italy), the
-;       University of Cambridge and the Rutherford Appleton Laboratory (UK). 
+;       Astrophysical Plasmas. It is a collaborative project involving  the
+;       University of Cambridge,  Goddard Space Flight Center, and University of Michigan. 
 ;
 ; NAME
 ;
@@ -534,12 +538,18 @@
 ;       v.23, 18-Jan-2024, Peter Young
 ;          Fixed bug when reading abundance files in the new archive directory.
 ;
+;       v.24, 10 May 2024, Giulio Del Zanna
+;          added the level indices of the transitions.
+;       v.25 13 June 2024  Giulio Del Zanna
+;          Major rewrite for version 11.
+;       v.26 19 July 2024 GDZ, fixed the bug when calculating the isothermal option.
+;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.23, 18-Jan-2024
+; VERSION     :  V.26
 ;
 ;-
 PRO restore_spectrum
@@ -898,12 +908,12 @@ ENDCASE
 
 CASE  tran.photoexcitation OF 
    0:BEGIN 
-      widget_control,state.photoexcitation_info, set_val='Photoexc.: NO'
+      widget_control,state.photoexcitation_info, set_val='PE: NO'
       photoexcitation = 0
       WIDGET_CONTROL,state.photoexcitation_base, map=0
    END 
    1:BEGIN 
-      widget_control,state.photoexcitation_info, set_val='Photoexc.: YES'
+      widget_control,state.photoexcitation_info, set_val='PE: YES'
       photoexcitation = 1
       WIDGET_CONTROL,state.photoexcitation_base, map=1
 
@@ -1082,7 +1092,9 @@ IF  test THEN BEGIN
                IF spectrum.lines[ind[i]].tmax NE 0.  THEN line_str[i] = line_str[i]+  $
                  '  log Tm [K]='+trim(STRING(format='(f5.2)', spectrum.lines[ind[i]].tmax))
 
-               line_str[i] = line_str[i] +$
+; GDZ: add the line indices -                
+               line_str[i] = line_str[i] + '    '+trim(spectrum.lines[ind[i]].lvl1)+$
+                             '-'+trim(spectrum.lines[ind[i]].lvl2) +$
                  '   '+strtrim(spectrum.lines[ind[i]].ident, 2)
 
 
@@ -1331,7 +1343,7 @@ CASE 1 OF
            ' ', $
            'PLEASE READ THE CHIANTI USER GUIDES AND THE DOCUMENTATION IN THE HEADERS OF THE PROCEDURES to understand how to use this software. ', $
            '  ', $
-           ' Send comments to chianti_help@halcyon.nrl.navy.mil if the details in the documentation are not clear or if you have problems in running the software.', $
+           ' Send comments to Giulio Del Zanna if the details in the documentation are not clear or if you have problems in running the software.', $
            '  ', $
            'This section of the program calculates line intensities (with a call to CH_SYNTHETIC).', $
            'A series of parameters must be set: ', $
@@ -1342,7 +1354,8 @@ CASE 1 OF
            '   3) a general (Te,Ne) model. In this case, a file will be read. ', $
            '      This file should have two columns, one with the Te (K) values, and one with the Ne (cm^-3) values. ', $
            ' ', $
-           ' - The ionization fraction file to be used. ', $
+           ' - The ionization fraction file to be used or the temperature range and step for a calculation on the fly with the version 11 advanced models. ', $
+           ' ',$
            ' - All ions ?  If set to yes (default), then all the ions present in the database will be included.', $
            '               If set to no, then it is possible to select a list of ions with a widget', $
            ' ', $
@@ -1374,7 +1387,7 @@ CASE 1 OF
         ' Once the IDL structure with the line intensities is in the memory, it is then possible to ', $
         ' calculate and plot a spectrum. Please read the HELP below. ', $
         ' ', $
-        'Giulio Del Zanna & Peter Young']
+        'Giulio Del Zanna ']
       xpopup,str, xsize=130
    END
 
@@ -1469,14 +1482,233 @@ CASE 1 OF
 
 ;-----------------------------------------------------------------------
 
-   event.id EQ state.all_ions_butt: BEGIN
+   event.id EQ state.ioneq_help_button: BEGIN 
+      str=['With the advanced ionization equilibrium option (the default), developed by Giulio Del Zanna and Roger Dufresne', $
+           'and implemented in version 11, the default is to calculate on the fly the ion charge states ', $
+           'in equilibrium, for a set of elements/ions that are available. For the other ions the previous ',$
+           'zero-density approximation is used. To speed up the calculations, the user can choose the required',$
+           'temperature range and step in log T.  ',$
+           'The ion abundances are stored in a file for later use within the programs called by ch_ss.',$
+           'This file can be used later on as an input. The file is written in the working directory, with the name adv.ioneq,',$
+           'but if such file exists, a different file with a time stamp added (in Julian days and fractions) is chosen by default. ',$
+           ' ',$
+           'The addition of charge transfer (CT) is recommended especially for silicon and oxygen ions. In this ',$
+           'case, a selection of atmosphere files can be chosen, or a user-defined supplied. ',$
+           ' ',$
+           'The alternative is to choose as in previuous versions a precompiled CHIANTI .ioneq file with the charge states.',$
+           'This file could have been pre-calculated with the advanced model options using ch_ss or the program CH_CALC_IONEQ,',$
+           'but the user should make sure that for consistency the same parameters are used for both the ion abundnaces',$
+            'and the calculation of the line emissivities;  as before, three options are available, constant Ne, ',$
+           'constant Pe, or a tabulated list (in a file) of Te, Ne ',$
+          ' ']
+      result = DIALOG_MESSAGE(str,/info)
+   END
+
+;-----------------------------------------------------------------------   
+
+   
+   event.id EQ state.ioneq_pdmenu: BEGIN
+
+      WIDGET_CONTROL,state.ioneq_pdmenu,  get_uvalue=bob
+
+      ioneqfile = ''
+      file = ''
+      
+      CASE  bob OF 
+
+         '0': BEGIN 
+            WIDGET_CONTROL,state.ioneq_show,set_value=''
+         END 
+
+         '1':BEGIN 
+            ptitle='Select appropriate Ion Fraction file to READ'
+            file=dialog_pickfile(filter='*ioneq', tit=ptitle)
+;            file = BIGPICKFILE(filter='*ioneq', tit='Select appropriate Ion Fraction file to READ')
+            IF file NE '' THEN BEGIN 
+               break_file,file,  disk, ioneqdir, ioneqfile,ext
+               ioneqfile = ioneqfile+ext
+               ioneqdir = concat_dir(disk, ioneqdir)
+               WIDGET_CONTROL,state.ioneq_show,set_value=ioneqfile
+            END
+         END 
+
+         ELSE:BEGIN 
+            file = bob
+            break_file,file,  disk, ioneqdir, ioneqfile,ext
+            ioneqfile = ioneqfile+ext
+            ioneqdir = concat_dir(disk, ioneqdir)
+            WIDGET_CONTROL,state.ioneq_show,set_value=ioneqfile
+         END   
+      ENDCASE  
+
+      IF file NE '' THEN BEGIN 
+         read_ioneq, file, ioneq_logt,ioneq,ioneq_ref
+         widget_control, state.show_lines,set_val= ''
+
+         FOR  i=0,n_elements(ioneq_ref)-1 DO $
+           widget_control, state.show_lines,/append , $
+           set_val=ioneq_ref[i]
+      END 
+
+   END  
+
+;-----------------------------------------------------------------------
+; event for the calculation of ion charge states
+   
+   event.id EQ state.ibase_sel:BEGIN 
+
+      WIDGET_CONTROL,state.ibase_sel,get_uvalue=bob,get_value=fred
+      calc_ioneq_flag = bob[fred]
+      
+       if calc_ioneq_flag eq 1 then begin 
+          WIDGET_CONTROL,state.input_ibase1, map=1
+          WIDGET_CONTROL,state.input_ct_base, map=1
+          WIDGET_CONTROL,state.output_ioneq_show, map=1
+          
+; by default do not run CT:          
+          WIDGET_CONTROL,state.ct_base, map=0
+          WIDGET_CONTROL,state.ct_base_sel,set_value=1
+          
+          WIDGET_CONTROL,state.ioneq_base,map=0
+       endif else begin
+          WIDGET_CONTROL,state.output_ioneq_show, map=0
+          WIDGET_CONTROL,state.input_ibase1, map=0
+          WIDGET_CONTROL,state.input_ct_base, map=0
+          WIDGET_CONTROL,state.ct_base, map=0
+          WIDGET_CONTROL,state.ioneq_base,map=1
+       end       
+    end 
+;-----------------------------------------------------------------------
+
+     event.id EQ state.ct_base_sel:BEGIN 
+
+      WIDGET_CONTROL,state.ct_base_sel,get_uvalue=bob,get_value=fred
+      ct_flag = bob[fred]
+
+      if ct_flag eq 1 then begin
+
+          WIDGET_CONTROL,state.ct_base, map=1
+         
+          atmosphere_file=ch_get_file(path=concat_dir(concat_dir($
+                          concat_dir(!xuvtop,'ancillary_data'),$
+                          'advanced_models'),'model_atmospheres'),$
+                                      filter='*.dat',tit='Select an atmosphere file', $
+                           /modal,  group=SYN_MAIN_base)
+
+         
+         if file_exist(atmosphere_file) then begin
+            break_file, atmosphere_file,  disk, dir, file,ext
+             
+            WIDGET_CONTROL,state.ct_show,set_value=file
+            
+              endif  else begin
+     WIDGET_CONTROL,state.ct_show,set_value=''
+      result = DIALOG_MESSAGE(['Error, could not find atmosphere file '] ,/info)
+              end 
+                
+           endif  else begin
+               atmosphere_file=''
+              WIDGET_CONTROL,state.ct_show,set_value=''
+                  WIDGET_CONTROL,state.ct_base, map=0
+               end 
+      
+    end 
+;-----------------------------------------------------------------------
+; check input min and max log T
+     event.id EQ state.min_logt_ev:BEGIN
+        dummy=''
+              WIDGET_CONTROL,state.min_logt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.min_logt= float(dummy[0])
+         if state.min_logt ge state.max_logt then begin
+          widget_control, state.show_lines , $
+           set_val='min log T  greater than max log T ??? '
+         WIDGET_CONTROL,state.min_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 4.0 ))
+         state.min_logt=4.0
+         endif 
+      ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='min log T  not a  valid number !'
+         WIDGET_CONTROL,state.min_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 4.0 ))
+         state.min_logt=4.0
+      END 
+   END 
+
+     event.id EQ state.max_logt_ev:BEGIN
+        dummy=''
+              WIDGET_CONTROL,state.max_logt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.max_logt= float(dummy[0])
+         if state.max_logt le state.min_logt then begin
+          widget_control, state.show_lines , $
+           set_val='max log T smaller  than min log T ??? '
+         WIDGET_CONTROL,state.max_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 8.0 ))
+         state.max_logt=8.0
+         endif 
+      ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='max log T  not a  valid number !'
+         WIDGET_CONTROL,state.max_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 8.0 ))
+         state.max_logt=8.0
+      END 
+   END 
+
+     event.id EQ state.dlogt_ev:BEGIN
+        dummy=''
+              WIDGET_CONTROL,state.dlogt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.dlogt= float(dummy[0])
+         if state.dlogt le 0 or  state.dlogt ge  state.min_logt then begin
+          widget_control, state.show_lines , $
+           set_val='wrong d log T  ??? '
+         WIDGET_CONTROL,state.dlogt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 0.1 ))
+         state.dlogt=0.1
+         endif 
+      ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='d log T  not a  valid number !'
+         WIDGET_CONTROL,state.dlogt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 0.1 ))
+         state.dlogt=0.1
+      END 
+   END 
+     
+;-----------------------------------------------------------------------
+; check the name of the output .ioneq file
+
+         event.id EQ state.output_ioneq_show:BEGIN
+        dummy=''
+              WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
+              dummy=trim(dummy)
+              if file_exist(dummy) then begin
+
+                 state.output_ioneq_file='adv_'+$
+                                         trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
+                 
+                 WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
+                 
+                 widget_control, state.show_lines , $
+           set_val='Output ioneq file '+dummy+' exist ! - setting a new file name: '+state.output_ioneq_file
+
+              endif else state.output_ioneq_file=dummy
+              
+           END
+         
+;-----------------------------------------------------------------------
+
+  event.id EQ state.all_ions_butt: BEGIN
       str=['Calculate all the ions in the database.', $
            'If this is set, the routine uses the file masterlist.ions that is located ', $
            'in the masterlist/ directory' ]
       result = DIALOG_MESSAGE(str,/info)
    END 
-;-----------------------------------------------------------------------
-
+;-----------------------------------------------------------------------         
+   
    event.id EQ state.all_ions_ev: BEGIN
 
       WIDGET_CONTROL,state.all_ions_ev,get_uvalue=bob,get_value=fred
@@ -1588,54 +1820,7 @@ CASE 1 OF
      widget_control,state.lookup_ev,set_value=event.value
    END
 ;-----------------------------------------------------------------------
-
-   event.id EQ state.ioneq_pdmenu: BEGIN
-
-      WIDGET_CONTROL,state.ioneq_pdmenu,  get_uvalue=bob
-
-      ioneqfile = ''
-      file = ''
-      
-      CASE  bob OF 
-
-         '0': BEGIN 
-            WIDGET_CONTROL,state.ioneq_show,set_value=''
-         END 
-
-         '1':BEGIN 
-            ptitle='Select appropriate Ion Fraction file to READ'
-            file=dialog_pickfile(filter='*ioneq', tit=ptitle)
-;            file = BIGPICKFILE(filter='*ioneq', tit='Select appropriate Ion Fraction file to READ')
-            IF file NE '' THEN BEGIN 
-               break_file,file,  disk, ioneqdir, ioneqfile,ext
-               ioneqfile = ioneqfile+ext
-               ioneqdir = concat_dir(disk, ioneqdir)
-               WIDGET_CONTROL,state.ioneq_show,set_value=ioneqfile
-            END
-         END 
-
-         ELSE:BEGIN 
-            file = bob
-            break_file,file,  disk, ioneqdir, ioneqfile,ext
-            ioneqfile = ioneqfile+ext
-            ioneqdir = concat_dir(disk, ioneqdir)
-            WIDGET_CONTROL,state.ioneq_show,set_value=ioneqfile
-         END   
-      ENDCASE  
-
-      IF file NE '' THEN BEGIN 
-         read_ioneq, file, ioneq_logt,ioneq,ioneq_ref
-         widget_control, state.show_lines,set_val= ''
-
-         FOR  i=0,n_elements(ioneq_ref)-1 DO $
-           widget_control, state.show_lines,/append , $
-           set_val=ioneq_ref[i]
-      END 
-
-   END  
-
-;-----------------------------------------------------------------------
-
+     
    event.id EQ state.temp_base:BEGIN 
 
       WIDGET_CONTROL,state.temp_base,get_uvalue=bob,get_value=fred
@@ -1809,15 +1994,29 @@ CASE 1 OF
    END  
 
 ;-----------------------------------------------------------------------
+
+   event.id EQ state.pe_help_button: BEGIN 
+      str=['Photo-excitation (PE) by a black-body can be added to the calculations.', $
+           'The two parameters are the distance from the Sun centre in solar radii ', $
+           'and the radiation temperature of the photosphere, which is about 5800 K  ', $
+           'for the visible and 6100 K for the near infrared. ',$
+           'Note that a user-defined radiation spectrum could be input in the command-line version.',$
+           'Important note: the PE is added as a correction to the A-value. It only works if the ',$
+           'spectrum is a continuum, otherwise see Del Zanna (2024). ']
+      result = DIALOG_MESSAGE(str,/info)
+   END
+
+   
+;-----------------------------------------------------------------------
 ;  Switch
 ;
    event.id EQ state.photoexcitation_info: BEGIN
       IF photoexcitation THEN BEGIN 
-         widget_control,state.photoexcitation_info, set_val='Photoexc.: NO'
+         widget_control,state.photoexcitation_info, set_val='PE: NO'
          photoexcitation = 0
          WIDGET_CONTROL,state.photoexcitation_base, map=0
       ENDIF ELSE BEGIN 
-         widget_control,state.photoexcitation_info, set_val='Photoexc.: YES'
+         widget_control,state.photoexcitation_info, set_val='PE: YES'
          photoexcitation = 1
          WIDGET_CONTROL,state.photoexcitation_base, map=1
       END 
@@ -1863,8 +2062,7 @@ CASE 1 OF
 ; DO SOME CHECKS:
 ;----------------
 
-
-;min and max wavelengths
+; check min and max wavelengths
 
       minw1 = xrange(0)
       widget_control,state.wminw1, get_v=minw1 
@@ -1923,6 +2121,8 @@ CASE 1 OF
 
          END 
       ENDCASE 
+
+;-------------------------------------------------------
       
 
       WIDGET_CONTROL,state.all_ions_ev,get_uvalue=bob,get_value=fred
@@ -1931,16 +2131,8 @@ CASE 1 OF
       WIDGET_CONTROL,state.rem_theor1,get_uvalue=bob,get_value=fred
       theor_lines = bob[fred]
 
-;check 
-;help, ioneqfile, ioneqdir
 
-      IF n_elements(ioneqfile) EQ 1 THEN BEGIN 
-
-         ioneq_name = concat_dir(ioneqdir, ioneqfile)
-         IF NOT  file_exist(ioneq_name) THEN err_mess = [err_mess, 'No Ioniz. Frac. file defined'] 
-
-      ENDIF ELSE   err_mess = [err_mess, 'No Ioniz. Frac. file defined'] 
-
+      
       WIDGET_CONTROL,state.temp_base,get_uvalue=bob,get_value=fred
       isothermal_flag = bob[fred]
 
@@ -1977,10 +2169,9 @@ CASE 1 OF
          WIDGET_CONTROL,state.iso_logem_ev,$
            set_value=arr2str(dummy2, ',',/trim)
 
+;         IF min(iso_logt)  LE  0. THEN err_mess = [err_mess, 'Wrong Log T - Negative ? '] 
 
-;         IF min(iso_logem) LT   0. THEN err_mess = [err_mess, 'Wrong Log EM ']
-         IF min(iso_logt)  LE  0. THEN err_mess = [err_mess, 'Wrong Log T - Negative ? '] 
-
+         
       ENDIF  ELSE BEGIN 
 
          IF n_elements(demfile) EQ 1 THEN BEGIN 
@@ -2016,7 +2207,135 @@ CASE 1 OF
               set_value= strtrim(string(format='(f6.1)', 6000.0 ))
          END 
 
-      END  
+      END
+
+;-------------------------------------------------------
+; read the advanced model inputs      
+;-------------------------------------------------------
+
+ 
+; Advanced model options:
+            WIDGET_CONTROL,state.ibase_sel,get_uvalue=bob,get_value=fred
+      state.calc_ioneq_flag = bob[fred]
+
+      if state.calc_ioneq_flag then begin
+         
+            advanced_model=1
+
+; check file name first.
+            
+        dummy=''
+              WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
+              dummy=trim(dummy)
+              if file_exist(dummy) then begin
+                 state.output_ioneq_file=''
+                 WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
+                       err_mess = [err_mess, 'Error - output ioneq file exists - change name! ']
+                    endif else begin
+                       state.output_ioneq_file=dummy
+                       ioneq_name=state.output_ioneq_file
+                    end
+
+                 
+              WIDGET_CONTROL,state.min_logt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.min_logt= float(dummy[0])
+     ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='min log T  not a  valid number !'
+         WIDGET_CONTROL,state.min_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 4.0 ))
+         state.min_logt=4.0
+         err_mess = [err_mess, 'Error']
+      END
+
+       dummy=''
+              WIDGET_CONTROL,state.max_logt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.max_logt= float(dummy[0])
+     ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='max log T  not a  valid number !'
+         WIDGET_CONTROL,state.max_logt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 8.0 ))
+         state.max_logt=8.0
+          err_mess = [err_mess, 'Error']
+      END
+
+      if state.max_logt le state.min_logt then begin
+          widget_control, state.show_lines , $
+                          set_val='max log T smaller  than min log T ??? '
+          err_mess = [err_mess, 'Error']
+       end
+              if state.min_logt ge state.max_logt then begin
+          widget_control, state.show_lines , $
+           set_val='min log T  greater than max log T ??? '
+          err_mess = [err_mess, 'Error']
+       end
+
+       dummy=''
+              WIDGET_CONTROL,state.dlogt_ev, get_v=dummy
+      IF valid_num(dummy(0))  THEN BEGIN 
+         state.dlogt= float(dummy[0])
+         if state.dlogt le 0 or  state.dlogt ge  state.min_logt then begin
+          widget_control, state.show_lines , $
+                          set_val='wrong d log T  ??? '          
+         WIDGET_CONTROL,state.dlogt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 0.1 ))
+         state.dlogt=0.1
+         err_mess = [err_mess, 'Error']
+         endif 
+      ENDIF ELSE BEGIN 
+         widget_control, state.show_lines , $
+           set_val='d log T  not a  valid number !'
+         WIDGET_CONTROL,state.dlogt_ev,$ 
+                        set_value= strtrim(string(format='(f3.1)', 0.1 ))
+         state.dlogt=0.1
+         err_mess = [err_mess, 'Error']
+      END
+      
+           ioneq_logt= state.min_logt+ state.dlogt*( indgen((state.max_logt-state.min_logt)/state.dlogt)+1)
+
+          ioneq_name= state.output_ioneq_file
+
+          IF  isothermal_flag EQ 1 THEN BEGIN
+
+             if min(iso_logt) lt min(ioneq_logt) or max(iso_logt) gt max(ioneq_logt) then $
+            err_mess = [err_mess, 'Isothermal temperatures chosen are inconsistent with the ion fraction temperatures - EXIT ']
+
+          ENDIF 
+          
+            if state.ct_flag then begin
+               ct=1
+
+               if not file_exist(state.atmosphere_file) then $
+                  err_mess = [err_mess, 'Atmosphere file for charge transfer not found - EXIT']
+               
+               endif else ct=0
+         endif  else begin
+            
+            advanced_model=0
+
+            IF n_elements(ioneqfile) EQ 1 THEN BEGIN 
+
+         ioneq_name = concat_dir(ioneqdir, ioneqfile)
+         IF NOT  file_exist(ioneq_name) THEN err_mess = [err_mess, 'No Ionization Fraction file defined'] 
+
+      ENDIF ELSE   err_mess = [err_mess, 'No Ioniz. Frac. file defined'] 
+
+            IF  isothermal_flag EQ 1 THEN BEGIN
+; need to check if the requested log T is within the ranges of the 
+; ion fraction temperatures :
+
+               read_ioneq, ioneq_name , logt_i,ioneq_i, ref
+if min(iso_logt) lt min(logt_i) or max(iso_logt) gt max(logt_i) then $
+   err_mess = [err_mess, 'Isothermal temperatures chosen are inconsistent with the ion fraction temperatures in the chosen file - EXIT ']
+
+            ENDIF
+            
+         end 
+         
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       IF n_elements(err_mess) GT 1 THEN BEGIN 
@@ -2032,7 +2351,7 @@ CASE 1 OF
 
          IF all_ions_yn THEN delvarx, list_ions 
 
-         IF  isothermal_flag EQ 1 THEN delvarx, dem_name  ELSE $
+         IF  isothermal_flag EQ 1 THEN delvarx, dem_name,ioneq_logt  ELSE $
            delvarx, iso_logt, iso_logem
 
          WIDGET_CONTROL, state.plot_rat, GET_VALUE=plot_rat_id ,  sensitive=1 
@@ -2059,19 +2378,17 @@ CASE 1 OF
          endif else begin
             lookup=0
          endelse 
-         
-         ch_synthetic, int_xrange(0), int_xrange(1), output=tran, $
+          
+                        
+         ch_synthetic, int_xrange[0], int_xrange[1], output=tran, $
            err_msg=err_msg, msg=msg, $
-           pressure=pressure, density=density, $
-           model_file=model_file, $
-           all=theor_lines,$
-           sngl_ion=list_ions,$
-           photons=photons, $ 
-           LOGT_ISOTHERMAL=iso_logt, $
-           logem_isothermal=iso_logem, $
+           pressure=pressure, density=density, model_file=model_file, $
+           all=theor_lines,sngl_ion=list_ions, photons=photons, $ 
+           LOGT_ISOTHERMAL=iso_logt, logem_isothermal=iso_logem, $
            ioneq_name=ioneq_name, dem_name=dem_name, $
-                       noprot=noprot, rphot=rphot1, radtemp=radtemp, /progress, $
-                       lookup=lookup
+                       noprot=noprot, rphot=rphot1, radtemp=radtemp, /progress, lookup=lookup,$
+                       ioneq_logt=ioneq_logt,advanced_model=advanced_model,ct=ct,$
+           atmosphere=state.atmosphere_file ;,he_abund=he_abund
 
          WIDGET_CONTROL, SYN_MAIN_base, sensitive=1
 
@@ -2082,7 +2399,7 @@ CASE 1 OF
               set_val=err_msg
             xpopup, err_msg,  xsize=130, title='ERROR !'
 
-         ENDIF ELSE  BEGIN 
+         ENDIF  ELSE  BEGIN 
 
             widget_control, state.show_lines , $
               set_val='Line intensities calculated. Now calculate spectrum !'
@@ -2105,8 +2422,8 @@ CASE 1 OF
             WIDGET_CONTROL,state.ymax_base,  set_value=strtrim(string(format='(e9.2)',yrange(1)),2)
 
          END 
-
-         IF msg(1) NE '' THEN BEGIN 
+         
+         IF msg[0] NE '' THEN BEGIN 
             widget_control, state.show_lines , $
               set_val=msg
 ;
@@ -2317,7 +2634,7 @@ CASE 1 OF
            ' ', $
            'PLEASE READ THE CHIANTI USER GUIDES AND THE DOCUMENTATION IN THE HEADERS OF THE PROCEDURES to understand how to use this software. ', $
            '  ', $
-           ' Send comments to chianti_help@halcyon.nrl.navy.mil  if the details in the documentation are not clear or if you have problems in running the software.', $
+           ' Send comments to Giulio Del Zanna  if the details in the documentation are not clear or if you have problems in running the software.', $
            ' ', $
            'This section of the program calculates, plots a synthetic spectrum and allows ', $
            'the creation of tables of line intensities and various outputs.', $
@@ -3705,10 +4022,10 @@ xuvtop = !xuvtop
 
 
 device, get_screen_size = sz
-sz(0) = 1100 < 0.9*sz(0)
-sz(1) = 900 < 0.9*sz(1)
+sz(0) = 1150 < 0.9*sz(0)
+sz(1) = 950 < 0.9*sz(1)
 
-wxsiz = 1000 < round(sz(0))     ;1100
+wxsiz = 1100 < round(sz(0))     ;1100
 wysiz = 400 < round(sz(1)/3.5)  ; 400
 
 ;print, wxsiz, wysiz
@@ -3725,7 +4042,7 @@ SYN_MAIN_BASE = WIDGET_BASE(col=1,/frame, MAP=1,x_scroll=sz(0),y_scroll=sz(1), $
 
 lin_base0 = WIDGET_BASE(syn_main_base, col=1, space=0) ;,/frame)
 
-calc_int_butt = widget_BUTTON(lin_base0, value='Line intensities calculation - click here for a short HELP - Send comments to chianti_help@halcyon.nrl.navy.mil', font=font)
+calc_int_butt = widget_BUTTON(lin_base0, value='Line intensities calculation - click here for a short HELP - Send comments to Giulio Del Zanna ', font=font)
 
 
 lin_base = WIDGET_BASE(lin_base0,row=1, /frame, space=0)
@@ -3737,7 +4054,7 @@ ss = widget_base(lin_base, /frame)
 ss5 =  WIDGET_BASE(ss, /column, /frame) 
 
 ;unit_info0 = widget_button(ss5,value='Units: '+angstrom)
-unit_info0 = widget_label(ss5,value='Wavelength ('+angstrom+')')
+unit_info0 = widget_label(ss5,value='Wavelength ['+angstrom+']')
 ;default:
 units(0) = 'Angstroms'
 
@@ -3745,19 +4062,20 @@ units(0) = 'Angstroms'
 ss1    = widget_base(ss5, /row)
 wlss   = widget_label(ss1,value='Min.',font=font)
 sss1   = widget_base(ss1,/row)
-wminw1 = widget_text(sss1,/edit,xsize=9,ysize=1,uvalue='MINW1',$
+wminw1 = widget_text(sss1,/edit,xsize=8,ysize=1,uvalue='MINW1',$
                      value=strtrim(string(format='(f11.1)',xrange(0)),2), font=font)
 
 ss2    = widget_base(ss5,/row)
 wlss  = widget_label(ss2,value='Max.',font=font)
 sss2   = widget_base(ss2,/row)
-wmaxw1  = widget_text(sss2,/edit,xsize=9,ysize=1,uvalue='MAXW1',$
+wmaxw1  = widget_text(sss2,/edit,xsize=8,ysize=1,uvalue='MAXW1',$
                       value=strtrim(string(format='(f11.1)',xrange(1)),2), font=font)
 
 
-cc1 = WIDGET_BASE(lin_base, /frame)
+cc1 = WIDGET_BASE(ss5, /column, /frame)
 
 c1 = WIDGET_BASE(cc1, /col)     ;, /frame)
+pp=widget_label(c1,value='Model options')
 
 const_names = ['Density (cm-3)', 'Pressure (cm-3 K)', 'Function (Ne,Te)']
 
@@ -3773,13 +4091,40 @@ const_read = WIDGET_TEXT(dummy,  value=strtrim(string(format='(e9.2)', const_val
                          /editable, /all, sensitive=1)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 ;
 ;  selection of ionization fraction data
 ;
 
-ioneq_base =  WIDGET_BASE(c1, /col, space=0) 
+
+dummy=WIDGET_BASE(lin_base, /col, space=0,/frame)
+
+ioneq_help_button=WIDGET_BUTTON(dummy,  value='Ion abund. HELP')
+
+ibase2= WIDGET_BASE(dummy, /col, space=0)
+ioneq_button=WIDGET_LABEL(ibase2,val='Calculate ion abund.?')
+
+dummy_sel=WIDGET_BASE(ibase2, ysize=30)
+ibase_sel=CW_BGROUP(dummy_sel,['Yes','No'],/row,$
+                    set_value=0,/exclusive,/NO_RELEASE,$
+                    uvalue=[1,0])
+
+calc_ioneq_flag=1
+
+output_ioneq_base=WIDGET_BASE(dummy, /col, space=0, map=1)
+output_ioneq_label=widget_label(output_ioneq_base, value='Output file:')
+
+if file_exist('adv.ioneq') then begin
+              output_ioneq_file='adv_'+$
+                  trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
+
+endif else output_ioneq_file='adv.ioneq'
+
+output_ioneq_show=WIDGET_TEXT(output_ioneq_base, value=output_ioneq_file, xsiz=14,/edit)
+
+
+;----------------------------
+
+ioneq_base =  WIDGET_BASE(dummy, /col, space=0, map=0) 
 
 desc = [{PSELECT_S, btext:'Ioniz. Fraction', mtext:'Ioniz. Fraction selection:', uvalue:'0', flags:0}, $
         {PSELECT_S, btext:'Ioniz. Fraction', $
@@ -3819,6 +4164,42 @@ dummy = widget_base(ioneq_base, ysize=30, xsize=120,space=0)
 ioneq_show=WIDGET_TEXT(dummy, value=ioneqfile)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+ibase1= WIDGET_BASE(lin_base, /col, space=0,/frame)
+;-----------------------------------------------------------------
+input_ibase1=WIDGET_BASE(ibase1, row=3, space=0, map=1)
+
+input_ibase2 = widget_label(input_ibase1, value='min log T [K]: ')
+input_ibase3 = WIDGET_BASE(input_ibase1, /row, ysize=30, xsize=40)
+
+min_logt_ev = WIDGET_TEXT(input_ibase3,/edit, $
+                          value=strtrim(string(format='(f3.1)', 4.0 )))
+min_logt=4.0
+
+input_ibase4 = widget_label(input_ibase1, value='max log T [K]: ')
+input_ibase4 = WIDGET_BASE(input_ibase1, /row, ysize=30, xsize=35)
+
+max_logt_ev = WIDGET_TEXT(input_ibase4,/edit, $
+                          value=strtrim(string(format='(f3.1)', 8.0 )))
+max_logt=8.0
+
+input_e2 = widget_label(input_ibase1, value='d log T:')
+input_e3 = WIDGET_BASE(input_ibase1, /row, ysize=30, xsize=50)
+dlogt_ev = WIDGET_TEXT(input_e3,/edit,$
+                           value=strtrim(string(format='(f4.1)', 0.1 )))
+dlogt=0.1
+
+input_ct_base=WIDGET_BASE(ibase1, ysize=30)
+ct_base_sel=CW_BGROUP(input_ct_base,['CT on','CT off'],/row,$
+                    set_value=1,/exclusive,/NO_RELEASE,$
+                    uvalue=[1,0])
+ct_flag=0
+atmosphere_file=''
+
+ct_base =widget_base(ibase1, column=1, /frame, map=0)
+ct_show=WIDGET_TEXT(ct_base, value='', xsiz=14)
+
+
+;-----------------------------------------------------------------
 
 
 basic1_base = widget_base(lin_base, /col, /frame)
@@ -3826,15 +4207,15 @@ basic1_base = widget_base(lin_base, /col, /frame)
 all_ions_base = WIDGET_BASE(basic1_base ,column=1, /frame)
 all_ions_butt = WIDGET_BUTTON(all_ions_base,  value='All ions? - HELP')
 
-dummy =  WIDGET_BASE(all_ions_base, ysize=25)
+dummy =  WIDGET_BASE(all_ions_base, ysize=30)
 all_ions_ev = CW_BGROUP(dummy,['no', 'yes'],/row,$
                         set_value=all_ions_yn,/exclusive,/NO_RELEASE, $
                         uvalue=[0, 1])
 
 rem_theor1_base = WIDGET_BASE(basic1_base ,column=1, /frame)
-rem_theor1_butt = WIDGET_BUTTON(rem_theor1_base,  value='All lines? - HELP')
+rem_theor1_butt = WIDGET_BUTTON(rem_theor1_base,  value='All lines? HELP')
 
-dummy =  WIDGET_BASE(rem_theor1_base, ysize=25)
+dummy =  WIDGET_BASE(rem_theor1_base, ysize=30)
 rem_theor1 = CW_BGROUP(dummy,['no','yes'],/row,$
                        set_value= 1 ,/exclusive,/NO_RELEASE,$
                        uvalue=[0,1]) ;, label_top='Add "unobserved" lines ?', /frame)
@@ -3842,9 +4223,9 @@ rem_theor1 = CW_BGROUP(dummy,['no','yes'],/row,$
 chck=getenv('CHIANTI_LOOKUP')
 IF chck NE '' THEN BEGIN 
   lookup_base = WIDGET_BASE(basic1_base ,column=1, /frame)
-  lookup_butt = WIDGET_BUTTON(lookup_base,  value='Use lookup tables? - HELP')
+  lookup_butt = WIDGET_BUTTON(lookup_base,  value='Lookup tables? HELP')
 
-  dummy =  WIDGET_BASE(lookup_base, ysize=25)
+  dummy =  WIDGET_BASE(lookup_base, ysize=30)
   lookup_ev = CW_BGROUP(dummy,['no', 'yes'],/row,$
                         set_value=0,/exclusive,/NO_RELEASE, $
                         uvalue=[0, 1])
@@ -3861,9 +4242,11 @@ ENDELSE
 temp_base1 = widget_base(lin_base, column=1, /frame)
 
 temp_base2 = WIDGET_BASE(temp_base1 ,column=1, space=0)
-temp_butt = WIDGET_BUTTON(temp_base2,val='ISOTHERMAL ? - HELP')
+temp_butt = WIDGET_BUTTON(temp_base2,val=' HELP')
 
-dummy = WIDGET_BASE(temp_base2, ysize=25)
+
+dummy_label=WIDGET_BUTTON(temp_base2,val='ISOTHERMAL?')
+dummy = WIDGET_BASE(temp_base2, ysize=30)
 temp_base=CW_BGROUP(dummy,['Yes','No (DEM)'],/row,$
                     set_value=1,/exclusive,/NO_RELEASE,$
                     uvalue=[1,0])
@@ -3872,14 +4255,16 @@ isothermal_flag = 0
 
 isothermal_base1 = WIDGET_BASE(temp_base1,map=0 , row=2, space=0)
 
-isothermal_base2 = widget_label(isothermal_base1, value='Log T (K): ')
-isothermal_base3 = WIDGET_BASE(isothermal_base1, /row, ysize=35, xsize=100)
+isothermal_base2 = widget_label(isothermal_base1, value='Log T [K]: ')
+isothermal_base3 = WIDGET_BASE(isothermal_base1, /row, ysize=35, xsize=80)
 
 iso_logt_ev = WIDGET_TEXT(isothermal_base3,/edit,/ALL_EVENTS, $
                           value=strtrim(string(format='(f3.1)', 6.0 )))
+;String(13B) +; SCR_XSIZE=20,
+isothermal_e2 = widget_label(isothermal_base1, value='Log EM' +  '[cm-5]:', YSIZE=35)
+;isothermal_e2b = widget_label(isothermal_base1, value= '[cm-5]:', YSIZE=35)
 
-isothermal_e2 = widget_label(isothermal_base1, value='Log EM (cm-5):')
-isothermal_e3 = WIDGET_BASE(isothermal_base1, /row, ysize=35, xsize=80)
+isothermal_e3 = WIDGET_BASE(isothermal_base1, /row, ysize=35, xsize=60)
 iso_logem_ev = WIDGET_TEXT(isothermal_e3,/edit,/ALL_EVENTS,$
                            value=strtrim(string(format='(f4.1)', 27.0 )))
 
@@ -3935,8 +4320,10 @@ dem_show=WIDGET_TEXT(dem_base, value='', xsiz=8)
 dummy_base = widget_base(lin_base, /column, /frame, map=1)
 
 ;photoexcitation
+pe_help_button = WIDGET_BUTTON(dummy_base,val='PE? - HELP')
 
-photoexcitation_info = widget_button(dummy_base,value='Photoexc.: NO',$
+
+photoexcitation_info = widget_button(dummy_base,value='PE: NO',$
                                      frame=2)
 ;define the default:
 
@@ -3951,7 +4338,7 @@ photoexcitation_rphot_ev = WIDGET_TEXT(photoexcitation_base,/edit, $
                                        xsize=6,value=strtrim(string(format='(f6.3)', 1.0 ), 2))
 
 
-dummy_base =  widget_label(photoexcitation_base, value='Trad (K):')
+dummy_base =  widget_label(photoexcitation_base, value='T [K]:')
 photoexcitation_radtemp_ev = WIDGET_TEXT(photoexcitation_base,/edit, $
                                          xsize=6,value=strtrim(string(format='(f6.1)', 6000.0 ), 2))
 
@@ -4285,6 +4672,8 @@ fsave_sp = widget_button(dummy2, value='Save spectrum (FITS)')
 show_lines = WIDGET_TEXT(syn_main_base,ysiz=8, $
                          value='Watch this space for information',/scroll,/wrap)
 
+; if n_elements(atmosphere_file) eq 0 then atmosphere_file=''
+
 
 state={calc_int_butt:calc_int_butt,unit_info:unit_info,unit_info2:unit_info2,$
        unit_info0:unit_info0,$  ;unit_info3:unit_info3,$
@@ -4293,7 +4682,13 @@ state={calc_int_butt:calc_int_butt,unit_info:unit_info,unit_info2:unit_info2,$
        calc_lines:calc_lines, calc_sp: calc_sp, quit:quit, $
        wminw1:wminw1, wmaxw1:wmaxw1,  wminw2:wminw2, wmaxw2:wmaxw2,$
        const_widg:const_widg, const_read:const_read, $
-       ioneq_pdmenu:ioneq_pdmenu, ioneq_show:ioneq_show, $
+       ibase_sel:ibase_sel,input_ibase1:input_ibase1,ioneq_base:ioneq_base, ioneq_pdmenu:ioneq_pdmenu, ioneq_show:ioneq_show, $
+       ioneq_help_button:ioneq_help_button,$
+       output_ioneq_show:output_ioneq_show,output_ioneq_file:output_ioneq_file,$
+       calc_ioneq_flag:calc_ioneq_flag,min_logt_ev:min_logt_ev, max_logt_ev:max_logt_ev,dlogt_ev:dlogt_ev ,$
+       min_logt:min_logt, max_logt:max_logt,dlogt:dlogt,$
+       input_ct_base:input_ct_base,ct_flag:ct_flag, ct_base_sel:ct_base_sel, ct_base:ct_base, ct_show:ct_show,atmosphere_file:atmosphere_file,$
+;-----------       
        dem_pdmenu:dem_pdmenu, dem_show:dem_show, dem_base:dem_base, $
        rem_theor1:rem_theor1,rem_theor1_butt:rem_theor1_butt,$
        all_ions_ev:all_ions_ev, all_ions_yn:all_ions_yn, all_ions_butt:all_ions_butt, $
@@ -4303,7 +4698,8 @@ state={calc_int_butt:calc_int_butt,unit_info:unit_info,unit_info2:unit_info2,$
 ; save_ascii:save_ascii,
 temp_base:temp_base, temp_butt:temp_butt, $
   isothermal_base1:isothermal_base1, $
-  iso_logt_ev:iso_logt_ev, iso_logem_ev:iso_logem_ev, $
+       iso_logt_ev:iso_logt_ev, iso_logem_ev:iso_logem_ev, $
+       pe_help_button:pe_help_button,$
   photoexcitation_base:photoexcitation_base, $
   photoexcitation_rphot_ev:photoexcitation_rphot_ev, $
   photoexcitation_radtemp_ev:photoexcitation_radtemp_ev, $
