@@ -195,13 +195,13 @@
 ;
 ;       iontemp=10.^(findgen(61)*0.05+3.5)
 ;       
-;       data=ch_calc_ioneq(iontemp, 1.e10, /adv, ele='C')
+;       data=ch_calc_ioneq(iontemp, dens=1.e10, /adv, ele='C')
 ;       
 ;       data=ch_calc_ioneq(iontemp, press=3e14, /adv, ele=['C','N','O'])
 ;
-;       data=ch_calc_ioneq(iontemp, 1.e10, /adv, /ct, out='all_ions_ne=1e10.ioneq')
+;       data=ch_calc_ioneq(iontemp, dens=1.e10, /adv, /ct, out='all_ions_ne=1e10.ioneq')
 ;
-;       data=ch_calc_ioneq(iontemp, outname='all_ions_zero_density.ioneq')
+;       data=ch_calc_ioneq(iontemp, advanced_model=0, outname='all_ions_zero_density.ioneq')
 ;
 ;       ch_compare_ioneq, 'C', files=['all_ions_ne=1e10.ioneq','all_ions_zero_density.ioneq'],$
 ;       lab=['Ne=1e10','Ne=0'],/top,/right,psym=[6,5], lines=[0,2], ion=[1,4]
@@ -270,13 +270,19 @@
 ;     v.11, 29 May 2024, RPD - Sundry changes to formatting, moved index_req check to element stage
 ;     v.12, 3-July-2024, GDZ - changed the definition of the output ionization equilibrium file.
 ;
-; VERSION    v.12
+;     v.13, 05 Sep 2025, RPD - altered to now use .rrcoeffs and .drcoeffs files for each ion
+;                rather than loading the recombination coefficients in memory and passing to
+;                the advanced model rate routine. Added comment to ioneq file if CT is included.
+;                Included passing quiet keyword to other routines used. Altered reading system time
+;                when creating ioneq name.
+;
+; VERSION    v.13
 ;-
 
 
 function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=density,$
                        pressure=pressure,model_file=model_file,advanced_model=advanced_model,ct=ct,$
-                       atmosphere_file=atmosphere_file,he_abund=he_abund,verbose=verbose,$
+                       atmosphere_file=atmosphere_file,he_abund=he_abund,verbose=verbose,quiet=quiet,$
                        err_msg=err_msg,warning_msg=warning_msg,dr_suppression=dr_suppression
 
   t1=systime(1)
@@ -295,16 +301,16 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
   if n_elements(outname) gt 0 then begin
 
      if file_exist(outname) then begin
-         pp= str_sep(anytim(!stime, /vms),' ',/trim)
-       outname=  'ch_adv_'+pp[1]+'-'+strmid(pp[2],0,8)+'.ioneq'
+         pp=strsplit(anytim(!stime,/vms),/extract)
+       outname='ch_adv_'+trim(pp[0])+'-'+strmid(pp[1],0,8)+'.ioneq'
     
       print,'% CH_CALC_IONEQ: requested ionization file exists. Writing output to '+outname
     end
      
    endif else begin
  
-      pp= str_sep(anytim(!stime, /vms),' ',/trim)
-       outname=  'ch_adv_'+pp[1]+'-'+strmid(pp[2],0,8)+'.ioneq'
+      pp= strsplit(anytim(!stime, /vms),/extract)
+       outname='ch_adv_'+pp[0]+'-'+strmid(pp[1],0,8)+'.ioneq'
       ;; outname='adv_'+$
       ;;   trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
 
@@ -451,13 +457,15 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
     if keyword_set(ct) then begin
       if n_elements(atmosphere_file) eq 0 then begin
         atmosphere_file=ch_get_file(path=concat_dir(concat_dir(concat_dir(!xuvtop,'ancillary_data'),$
-          'advanced_models'),'model_atmospheres'),filter='*.dat',tit='Select an atmosphere file') 
+          'advanced_models'),'model_atmospheres'),filter='*.dat',tit='Select an atmosphere file for the charge transfer calculation') 
       endif else begin
         if not file_exist(atmosphere_file) then begin
           err_msg='% CH_CALC_IONEQ: ERROR, input atmosphere file does not exist'
           print,err_msg & return,-1
         endif
       endelse
+      ion_comments=[ion_comments,'Charge transfer has been included in these ion balances']
+      ion_comments=[ion_comments,' using the model atmosphere file - '+atmosphere_file]
     endif   
 
     params=ch_adv_model_setup(temperatures,ct=ct,atmosphere_file=atmosphere_file,he_abund=he_abund)
@@ -465,17 +473,10 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
     model_ions=params.model_ions
     ions_nlevels=params.ions_nlevels ; GDZ
 
-    rrstates=params.rec_fits[0].rrstates
-    rrcoeffs=params.rec_fits[0].rrcoeffs
-    drstates=params.rec_fits[0].drstates
-    drcoeffs_c=params.rec_fits[0].drcoeffs_c
-    drcoeffs_e=params.rec_fits[0].drcoeffs_e
-
-    
-    ; calculate by default all elements- 
+    ; calculate by default all elements
     calculate_iz=indgen(30)+1
     
-    ; determine which elements are to be included in the calculation
+    ; determine which elements are to be included in the advanced model calculation
     
     ; check which elements are present in the masterlist         
     available_iz_ions=intarr(n_elements(model_ions))
@@ -523,10 +524,7 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
     z=calculate_iz[iiz]
     ion_rate=fltarr(ntemp,z+2)
     rec_rate=fltarr(ntemp,z+2)
-    ;GDZ: did we request to calculate this?
-    ; RPD: no we didn't need it before but do now because
-    ; we're calculating all elements. I've moved the line from checking it for 
-    ; every ion to checking once for the element
+    ; RPD: moved so that this is checked once for the element
     index_req=where(requested_iz eq z, nreq)
 
     for ion=0,z do begin
@@ -547,47 +545,12 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
             if ions_nlevels[ionmatch] gt 0 then $
               n_levels=ions_nlevels[ionmatch] else n_levels=999 ; GDZ
             
-            ; find recombination coefficients and indices of metastable levels for ion
-            rrind=where(rrstates[0,*] eq z and rrstates[1,*] eq z-ion,nrr)
-            drind=where(drstates[0,*] eq z and drstates[1,*] eq z-ion,ndr)
-
-            ; if ion not found in recombination list
-            if nrr eq 0 and ndr eq 0 then begin
-              ; if it is a neutral
-              if ion eq 0 then begin
-                metastable_levels,gname,metas,quiet=quiet
-                meta_index=where(metas eq 1)+1
-                rec_coeffs=fltarr(24,n_elements(meta_index))
-              ; otherwise it cannot be included in advanced model
-              endif else begin 
-                err_msg='% CH_CALC_IONEQ: ERROR, '+gname+$
-                  'cannot be included in the advanced model, please remove from list of model ions'
-                print,err_msg & return,-1
-              end
-            ; for those with RR data but not DR
-            endif else if nrr gt 0 and ndr eq 0 then begin
-              meta_index=reform(rrstates[2,rrind])
-              rec_coeffs=[rrcoeffs[*,rrind],fltarr(9,nrr),fltarr(9,nrr)]
-            ; for all others
-            endif else if nrr gt 0 and ndr gt 0 then begin
-              ; check there is not an inconsistency of metastable indices in recombination
-              ; table for the two sets of recombination coefficients
-              if array_equal(rrstates[2,rrind],drstates[2,drind]) eq 1 then begin
-                meta_index=reform(rrstates[2,rrind])
-                rec_coeffs=[rrcoeffs[*,rrind],drcoeffs_c[*,drind],drcoeffs_e[*,drind]]
-              endif else begin
-                err_msg='% CH_CALC_IONEQ: ERROR, Metastable level indices for '+gname+$
-                  ' in RR data do not match those in DR data'
-                print,err_msg & return,-1
-              end
-            endif  
-
             ; call the sub-routine to calculate overall ionisation and recombination rates
             if keyword_set(ct) then $
-              rates_tr=ch_adv_model_rates(gname,meta_index,temperatures,densities,rec_coeffs,$
-                model_atm=params.ct_model,verbose=verbose,n_levels=n_levels) $
-            else rates_tr=ch_adv_model_rates(gname,meta_index,temperatures,densities,$
-              rec_coeffs,verbose=verbose,n_levels=n_levels)
+              rates_tr=ch_adv_model_rates(gname,temperatures,densities,$
+                model_atm=params.ct_model,verbose=verbose,n_levels=n_levels,quiet=quiet) $
+            else rates_tr=ch_adv_model_rates(gname,temperatures,densities,$
+              verbose=verbose,n_levels=n_levels,quiet=quiet)
 
             ion_rate(*,ion)=rates_tr.final_ioniz[*]
             rec_rate(*,ion)=rates_tr.final_recomb[*]

@@ -453,9 +453,8 @@
 ;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
 ;                   calculation
 ;
-;       ATMOSPHERE: A file with the H,He abundances as a function of temperature.
-;                      By default, the file avrett_atmos.dat is read, with data from
-;                      Avrett E.H., Loeser R., 2008, ApJ, 175, 229
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature
+;                     for the charge transfer calculation.
 ;
 ;       HE_ABUND:  The total helium abundance relative to hydrogen. 
 ;

@@ -61,6 +61,8 @@
 ;                surface. If RPHOT is not specified, then photon
 ;                excitation will be switched off when pop_solver is
 ;                called.
+;       Pop_output:   Display relative populations of levels at each temperature
+;                     and density.
 ;
 ;
 ; KEYWORDS:
@@ -108,15 +110,18 @@
 ;           modified the way the number of levels is dealt with. 
 ;       v.6  04 Jan 2024, RPD
 ;               stopped level population output to screen in verbose mode
+;       v.7  14 Aug 2024, RPD
+;               Added keyword so that level pops can be output to screen,
+;               but separate it from verbose mode to reduce output.
 ;
 ;
-; VERSION     : 6
+; VERSION     : 7
 ;
 ;-
 
 pro get_populations, gname, t, n_levels, pops=pops, densities=densities, $
                       outfile=outfile, noionrec=noionrec, no_rrec=no_rrec, $
-                     noprot=noprot,radtemp=radtemp,rphot=rphot, $
+                     noprot=noprot,radtemp=radtemp,rphot=rphot, pop_output=pop_output, $
                     PATH=path, verbose=verbose, no_auto=no_auto, pressure=pressure
 
 t=double(t)
@@ -165,22 +170,22 @@ if size(pop,/n_dim) eq 1 then pops=pop $
   else if size(pop,/n_dim) eq 3 then pops=TRANSPOSE(pop[*,*,0:n_levels-1])
 
 ;
-;if keyword_set(verbose) then begin
-;  print,' '
+if keyword_set(pop_output) then begin
+  print,' '
  
-;  FOR i=0,nd-1 DO begin 
+  FOR i=0,nd-1 DO begin 
 
-;      print,' '
-;      print, gname+ ' Temperature='+string(t[i],format='(e12.4)')+$
-;             '  Density='+string(densities[i],format='(e12.4)') 
-;      print, 'Level:  relative population '
+      print,' '
+      print, gname+ ' Temperature='+string(t[i],format='(e12.4)')+$
+             '  Density='+string(densities[i],format='(e12.4)') 
+      print, 'Level:  relative population '
       
-;        FOR j=0, n_levels-1 DO $
-;          print, string(trim(level_numbers[j]), pops[level_numbers[j]-1,i], $
-;                            format='(" ",i4,": ",500e10.3)')
+        FOR j=0, n_levels-1 DO $
+          print, string(trim(level_numbers[j]), pops[level_numbers[j]-1,i], $
+                            format='(" ",i4,": ",500e10.3)')
 
-;  endfor 
-;endif
+  endfor 
+endif
 
 
 ; save the values:

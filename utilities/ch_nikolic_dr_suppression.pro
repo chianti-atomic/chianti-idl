@@ -93,8 +93,9 @@
 ;      
 ;       v.2, 16 Sept 2023  RPD, changed density input to allow for an array
 ;
+;       v.3, 27-AUG-2024  RPD, corrected error messages for density and pressure inputs
 ;
-; VERSION     : 2
+; VERSION     : 3
 ;-
 
 FUNCTION ch_nikolic_dr_suppression, gname, temperature, density=density, $
@@ -113,7 +114,11 @@ ENDIF
 ; If neither density or pressure have been specified, then just return
 ; the zero-density rates from ch_diel_recomb.
 ;
-IF n_elements(density) EQ 0 AND n_elements(pressure) EQ 0 THEN return,rate0
+IF n_elements(density) EQ 0 AND n_elements(pressure) EQ 0 THEN $
+  message,'%Error: please specify density or pressure'
+
+IF n_elements(density) GT 0 AND n_elements(pressure) GT 0 THEN $
+  message,'%Error: please specify either density or pressure'
 
 
 nt=n_elements(temperature)
@@ -121,9 +126,11 @@ nt=n_elements(temperature)
 ;
 ; Note that pressure over-rides density if both are input. 
 ;
-IF n_elements(pressure) NE 0 THEN BEGIN
+IF n_elements(pressure) EQ 1 THEN BEGIN
   density=pressure/temperature
   nd=nt
+ENDIF ELSE IF n_elements(pressure) GT 1 THEN BEGIN
+  message,'%Error: only a single, constant pressure can be specified'
 ENDIF ELSE IF n_elements(density) GT 1 THEN BEGIN
   IF n_elements(density) EQ nt THEN nd=nt ELSE $
     message,'%Error: density array is not the same length as temperature array'

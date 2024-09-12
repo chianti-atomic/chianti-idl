@@ -19,7 +19,7 @@
 ;
 ; PURPOSE:
 ;
-;	Calculate initial-level resolved or overall ionisation and recombination rates
+;	      Calculate initial-level resolved or overall ionisation and recombination rates
 ;       out of an ion. For a given input ion, the ionisation rates are for ionisation out
 ;       of that charge state into the next higher charge state, and the recombination rates
 ;       are for recombination from the input ion into the next lower charge state.
@@ -54,8 +54,7 @@
 ;       suppressed using the fitting formula of Nikolic et al (2013,2018), which mimic the
 ;       suppression of total DR rates into Rydberg levels as density increases. Recombination
 ;       into these levels can be followed by ionisation at higher densities before radiative decay
-;       into lower levels. Nikolic et al fit the suppression shown in the Summers (1974) tables,
-;       but in some cases the fitting formula does not match the results from Summers.
+;       into lower levels.
 ;
 ;       Charge transfer (CT) rates are calculated if files of rate coefficients are available.
 ;       They are found in files ending .ctilvl and .ctrlvl, corresponding to ionisation and
@@ -84,20 +83,14 @@
 ;
 ;       temp=10.^(findgen(61)*0.05+3.5)
 ;       dens=fltarr(61)+1.e11
-;       metastable_levels,'c_1',metas,quiet=quiet
-;       meta=where(metas eq 1)+1
-;       recs=fltarr(24,n_elements(meta))
 ;
-;       rates=ch_adv_model_rates('c_1',meta,temp,dens,recs)
-;       rates=ch_adv_model_rates('c_1',meta,temp,dens,recs,/level_resolved)
+;       rates=ch_adv_model_rates('c_1',temp,dens)
+;       rates=ch_adv_model_rates('c_1',temp,dens,/level_resolved)
 ;
 ;
 ; INPUTS:
 ;
 ;       THIS_ION:  The string in CHIANTI format for the ion.
-;
-;       META_INDEX:  Indexes of the metastable levels. These must match the level indexing
-;              given in the ion energy file.
 ;
 ;       MODEL_TEMP:  1D array specifying the temperatures (in K) for which the rates
 ;              are needed.
@@ -105,8 +98,6 @@
 ;       MODEL_DENSITY:  1D array specifying the electron number density (units: cm^-3)
 ;              for which the density-dependent rates are calculated. Array length
 ;              must match the temperature array length.
-;
-;       REC_COEFFS:  The coefficients required to calculate the recombination rates.
 ;
 ;	
 ; KEYWORDS:
@@ -129,10 +120,10 @@
 ;
 ; OUTPUTS:
 ;
-;       FINAL_IONIZ: a 1D array of the overall ionisation rates for the ion at the specified
+;       FINAL_IONIZ: an array of the overall ionisation rates for the ion at the specified
 ;               temperature points
 ;
-;       FINAL_RECOMB: a 1D array of the overall recombination rates for the ion at the specified
+;       FINAL_RECOMB: an array of the overall recombination rates for the ion at the specified
 ;               temperature points
 ;
 ;
@@ -144,7 +135,7 @@
 ; CALLS:
 ;
 ;       ch_ioniz_rate_lr, ch_burgchid_rate, ch_nikolic_dr_suppression
-;        get_populations;
+;       ch_diel_recomb, ch_rad_recomb, metastable_levels, get_populations;
 ;
 ;
 ; PREVIOUS HISTORY:
@@ -154,7 +145,7 @@
 ;
 ; WRITTEN:
 ;         
-;       Roger Dufresne (RPD) and Giulio Del Zanna (GDZ)
+;       v.1, Roger Dufresne (RPD) and Giulio Del Zanna (GDZ)
 ;       DAMTP, University of Cambridge, 16 Sept 2023 
 ;
 ;
@@ -170,51 +161,21 @@
 ;       v.4, 18-May-2024 GDZ
 ;            moved the calc_recrates_fits function here. 
 ;
+;       v.5, 29 Aug 2024, RPD
+;              Recombination fitting coefficients and metastable levels are now read
+;              from .rrcoeffs and .drcoeffs files instead of passing coefficients into routine
 ;
-; VERSION:  4
+; VERSION:  5
 ;
 ;- 
 
-function calc_recrates_fits,temp,rec_fits
-
-
-ntemp=n_elements(temp)
-nmeta=n_elements(rec_fits[0,*])
-rr_rate=dblarr(ntemp,nmeta)
-dr_rate=dblarr(ntemp,nmeta)
-
-
-for im=0,nmeta-1 do begin
-
-  rec_coeffs=double(rec_fits[*,im])
-
-  rrb=rec_coeffs[1]+rec_coeffs[4]*exp(-rec_coeffs[5]/temp)
-  rr_rate[*,im]=rec_coeffs[0]/(sqrt(temp/rec_coeffs[2])*$
-    (1+sqrt(temp/rec_coeffs[2]))^(1.0d0-rrb)*$
-    (1+sqrt(temp/rec_coeffs[3]))^(1.0d0+rrb))
-
-
-  for it=0,8 do dr_rate[*,im]=dr_rate[*,im]+$
-    temp^(-3.0d0/2.0d0)*rec_coeffs[6+it]*exp(-rec_coeffs[15+it]/temp)
-
-endfor
-
-
-rec_rates={rr_rate:rr_rate,dr_rate:dr_rate}
-
-return,rec_rates
-
-
-end
-
-
-function ch_adv_model_rates,this_ion,meta_index,model_temp,model_density,$
-            rec_coeffs,model_atm=model_atm,verbose=verbose,quiet=quiet,$
+function ch_adv_model_rates,this_ion,model_temp,model_density,$
+            model_atm=model_atm,verbose=verbose,quiet=quiet,$
             n_levels=n_levels,level_resolved=level_resolved
             
 
 ryd_ev=13.605698d0
-equiv_elecs=[1,2,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,1,2,3,4,5,6,7,8,9,10,11,12]
+equiv_elecs=[1,2,1,2,1,2,3,4,5,6,1,2,1,2,3,4]
 
 convertname,this_ion,el,effchg
 ion2filename,this_ion,ion_file
@@ -222,8 +183,38 @@ ion2filename,this_ion,ion_file
 ntemp=n_elements(model_temp)
 nmeta=n_elements(meta_index)
 
+
+; retrieve recombination data - this needs to be done first to get number of metastable levels
+; provided in the NRB data
+
+if effchg gt 1 then begin
+
+  rr_data=ch_rad_recomb(this_ion,model_temp,/level,quiet=quiet)
+  dr_data=ch_diel_recomb(this_ion,model_temp,/level,quiet=quiet)
+  sfactor=ch_nikolic_dr_suppression(this_ion,model_temp,density=model_density,quiet=quiet)
+   
+  nmeta=n_elements(rr_data[0,*])
+  meta_index=indgen(nmeta)+1
+
+  rec_rates=dblarr(ntemp,nmeta)
+  for im=0,nmeta-1 do rec_rates[*,im]=double(rr_data[*,im]+dr_data[*,im]*sfactor)
+  ; NRB recombination data is calculated for all levels below first dipole transition,
+  ; so the metastable indices are sequential from the ground level
+
+endif else begin
+  
+  ; find metastable levels in the case of neutrals - following recombination data,
+  ; metastables are included only up to first level with a dipole transition
+  metastable_levels,this_ion,metas,quiet=quiet
+  dipind=where(metas eq 0)
+  if dipind[0] eq -1 then nmeta=n_elements(metas) else nmeta=dipind[0]
+  meta_index=indgen(nmeta)+1
+  rec_rates=dblarr(ntemp,nmeta)
+  
+endelse
+
+
 ci_rates=dblarr(ntemp,nmeta)
-rec_rates=dblarr(ntemp,nmeta)
 cti_rates=dblarr(ntemp,nmeta)
 ctr_rates=dblarr(ntemp,nmeta)
 
@@ -286,18 +277,6 @@ if effchg le el then begin
     endif
       
   endelse
-
-endif
-
-
-; retrieve recombination data
-
-if effchg gt 1 then begin
-
-   rec_data=calc_recrates_fits(model_temp,rec_coeffs)
-   sfactor=ch_nikolic_dr_suppression(this_ion,model_temp,density=model_density,quiet=quiet)
-   
-  for im=0,nmeta-1 do rec_rates[*,im]=rec_data.rr_rate[*,im]+rec_data.dr_rate[*,im]*sfactor
 
 endif
 

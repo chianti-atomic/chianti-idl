@@ -24,10 +24,8 @@
 ;
 ; EXPLANATION
 ;
-;       Primarily it reads the recombination fitting coefficients provided by N.R. Badnell 
-;       (http://apap-network.org/DATA_AS/) required to calculate recombination data, read
-;       list of ions included in the advanced models, and the number of levels included in
-;       the level population solution.
+;       Primarily it reads the list of ions included in the advanced models, and the number of
+;       levels included in the level population solution.
 ;
 ;       It optionally obtains the model atmosphere parameters required for the charge
 ;       transfer (CT) calculation. ATMOSPHERE_FILE provides the model atmosphere file, which
@@ -44,7 +42,7 @@
 ;
 ; CATEGORY
 ;
-;       CHIANTI; recombination data; model atmosphere data
+;       CHIANTI; model atmosphere data
 ;
 ;
 ; CALLING SEQUENCE:
@@ -82,9 +80,6 @@
 ;
 ;       MODEL_IONS:  The list of ions to be included in the advanced models
 ;
-;       REC_COEFFS:  A structure with all the data read from the recombination fitting
-;             coefficient files
-;
 ;
 ; OPTIONAL OUTPUTS:
 ;
@@ -94,7 +89,7 @@
 ;
 ; CALLS:
 ;
-;       ch_read_list_ions, ch_read_recfits, rdfloat, read_ioneq, read_abund
+;       ch_read_list_ions, rdfloat, read_ioneq, read_abund
 ;
 ;
 ; PREVIOUS HISTORY:
@@ -121,8 +116,12 @@
 ;
 ;       v.6, 01 May 2024,  RPD, change atmosphere file keyword
 ;
+;       v.7, 28 Aug 2024,  RPD, corrected error in setting He ion fractions to zero
+;                               outside atmosphere temperature limits
 ;
-; VERSION:  6
+;       v.8, 29 Aug 2024,  RPD, no longer read and return the recombination fitting coefficients
+;
+; VERSION:  8
 ;
 ;- 
 
@@ -148,13 +147,6 @@ model_ions=info.list_ions
 ions_nlevels=info.nlevels
 
 
-; read in rec data lists, also used for indexes of metastable levels in each ion
-rec_dir=concat_dir(concat_dir(concat_dir(!xuvtop,'ancillary_data'),'advanced_models'),'recomb_fits')
-
-rec_fits=ch_read_recfits(concat_dir(rec_dir,'recomb_coeff.rrfit'),$
-  concat_dir(rec_dir,'recomb_coeff_c.drfit'),concat_dir(rec_dir,'recomb_coeff_e.drfit'))
-
-  
 ; retrieve model atmosphere data for charge transfer calculation
 if keyword_set(ct) then begin
 
@@ -223,7 +215,9 @@ if keyword_set(ct) then begin
     h_elec[ctlim]=0.0d0 & h1_frac[ctlim]=0.0d0 & h2_frac[ctlim]=0.0d0
   endif
 
-  if natmhe gt 0 then he1_frac[helim]=0.0d0 & he2_frac[helim]=0.0d0 & he3_frac[helim]=0.0d0
+  if natmhe gt 0 then begin
+    he1_frac[helim]=0.0d0 & he2_frac[helim]=0.0d0 & he3_frac[helim]=0.0d0
+  endif
   he_err=where(he3_frac lt 0.0,nhe)
   if nhe gt 0 then he3_frac[he_err]=0.0d0
   ; test both h fracs and he fracs for values greater than 1
@@ -242,8 +236,8 @@ endif
 
 
 if keyword_set(ct) then $
-  str={ions_nlevels:ions_nlevels,model_ions:model_ions,rec_fits:rec_fits,ct_model:ct_model} $
-else str={ions_nlevels:ions_nlevels,model_ions:model_ions,rec_fits:rec_fits}
+  str={ions_nlevels:ions_nlevels,model_ions:model_ions,ct_model:ct_model} $
+else str={ions_nlevels:ions_nlevels,model_ions:model_ions}
 
 return,str
 

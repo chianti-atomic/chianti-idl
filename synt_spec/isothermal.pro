@@ -290,7 +290,8 @@ ENDELSE
 ; PRY, 24-Jul-2018
 ; Get rid of widget selection for ioneq file
 ;
-IF n_elements(ioneq_name) EQ 0 THEN ioneq_name=!ioneq_file
+; GDZ - revert to original way, ask to choose ionization equilibrium file for transparency.
+;IF n_elements(ioneq_name) EQ 0 THEN ioneq_name=!ioneq_file
 
 
 IF n_elements(abund_name) EQ 0 THEN BEGIN 

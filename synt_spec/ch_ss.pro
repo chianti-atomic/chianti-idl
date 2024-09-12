@@ -540,16 +540,15 @@
 ;
 ;       v.24, 10 May 2024, Giulio Del Zanna
 ;          added the level indices of the transitions.
-;       v.25 13 June 2024  Giulio Del Zanna
+;       v.25 13 Jun 2024  Giulio Del Zanna
 ;          Major rewrite for version 11.
-;       v.26 19 July 2024 GDZ, fixed the bug when calculating the isothermal option.
 ;
 ; TO DO LIST:
 ;           Control the range of Angstroms when clicking
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.26
+; VERSION     :  V.25
 ;
 ;-
 PRO restore_spectrum
@@ -1497,7 +1496,7 @@ CASE 1 OF
            ' ',$
            'The alternative is to choose as in previuous versions a precompiled CHIANTI .ioneq file with the charge states.',$
            'This file could have been pre-calculated with the advanced model options using ch_ss or the program CH_CALC_IONEQ,',$
-           'but the user should make sure that for consistency the same parameters are used for both the ion abundnaces',$
+           'but the user should make sure that for consistency the same parameters are used for both the ion abundances',$
             'and the calculation of the line emissivities;  as before, three options are available, constant Ne, ',$
            'constant Pe, or a tabulated list (in a file) of Te, Ne ',$
           ' ']
@@ -2351,7 +2350,7 @@ if min(iso_logt) lt min(logt_i) or max(iso_logt) gt max(logt_i) then $
 
          IF all_ions_yn THEN delvarx, list_ions 
 
-         IF  isothermal_flag EQ 1 THEN delvarx, dem_name,ioneq_logt  ELSE $
+         IF  isothermal_flag EQ 1 THEN delvarx, dem_name  ELSE $
            delvarx, iso_logt, iso_logem
 
          WIDGET_CONTROL, state.plot_rat, GET_VALUE=plot_rat_id ,  sensitive=1 
@@ -2665,7 +2664,7 @@ if min(iso_logt) lt min(logt_i) or max(iso_logt) gt max(logt_i) then $
            '       Also note that to have the correct output units  (counts s-1 bin-1) the appropiately scaled DEM (or EM) values must be provided. ', $
            ' ', $
            'Once the spectrum is displayed below, it is then possible to perform ', $
-           'various operations by clicking ant typing on the buttons below. For example: ', $
+           'various operations by clicking and typing on the buttons below. For example: ', $
            ' ', $
            '-) Add labels to the plot and select a cut (Minimum peak intensity -- see  HELP button for details). ', $
            '-) Click on a region of the plot and view in the bottom panel the details of the lines', $

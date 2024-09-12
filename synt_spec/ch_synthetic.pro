@@ -762,8 +762,10 @@
 ;                advanced model, which was previously commented.
 ;                Also added the dr_suppression keyword.
 ;
+;          v.61, 05 Sep 2024, Roger Dufresne
+;                Minor alteration to reading system time when creating ioneq name.
 ;
-;   VERSION 60 
+;   VERSION 61
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1080,8 +1082,8 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
      IF n_elements(ioneq_name) EQ 0 then begin
         print, '% CH_SYNTHETIC: ADVANCED ionization model WARNING: *** YOU HAVE NOT DEFINED THE NAME OF THE IONEQ FILE ...'
 
-        pp= str_sep(anytim(!stime, /vms),' ',/trim)
-        ioneq_name=  'ch_adv_'+pp[1]+'-'+strmid(pp[2],0,8)+'.ioneq'
+        pp=strsplit(anytim(!stime,/vms),/extract)
+        ioneq_name='ch_adv_'+trim(pp[0])+'-'+strmid(pp[1],0,8)+'.ioneq'
         
         print, '% CH_SYNTHETIC: DEFAULT NAME THAT WILL BE WRITTEN in the working directory IS: '+ioneq_name
         print, '% CH_SYNTHETIC:  do not move this file as it will be read by other routines later on, when you create a spectrum '
@@ -1089,7 +1091,7 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
         
        
      endif else begin
-        IF  file_exist(ioneq_name)   THEN BEGIN 
+        IF file_exist(ioneq_name) THEN BEGIN 
            err_msg = '% CH_SYNTHETIC ERROR, ADVANCED ionization model option requested but the ioneq file '+ioneq_name+' already exist, give it  a different name!  -- EXIT'
            print,err_msg
            return
@@ -1731,7 +1733,7 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
 ; PRY, 12-May-2023: the lookup section has been moved earlier.
 ; GDZ, added verbose          
 ;---------------------------------------------------------
-       
+
            IF keyword_set(no_lookup) THEN BEGIN
               pop_solver, input,temp,dens,pops,/pressure,radfunc=radfunc, frac_cutoff=frac_cutoff, $
                           regular=regular, sparse=sparse, lapack=lapack,verbose=verbose

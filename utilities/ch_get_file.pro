@@ -20,7 +20,7 @@
 ; USE         : IDL> name = ch_get_file( '~/', '.pro',  tit=' Select a procedure ')
 ;
 ;
-; EXAMPLES    : dir= concat_dir(!xuvtop),'dem') 
+; EXAMPLES    : dir= concat_dir(!xuvtop,'dem') 
 ;		dem_name=ch_get_file(path=dir,filter='*.dem',title='Select DEM File')
 ;		
 ;    
