@@ -24,7 +24,9 @@ FUNCTION ch_rad_recomb,gname,temperature, $
 ;
 ; OPTIONAL INPUTS:
 ;       Filename:  This directly specifies the rad. recombination file
-;                  to be read. If specified, then Gname is ignored. 
+;                  to be read. If specified, then Gname is ignored. If
+;                  the file extension is "rrcoeffs", then the file is
+;                  read as a level-resolved file.
 ;
 ; KEYWORD PARAMETERS:
 ;       QUIET:   If set, then no information will be printed to the
@@ -49,27 +51,48 @@ FUNCTION ch_rad_recomb,gname,temperature, $
 ;          Added option to calculate recombination rate coefficients for metastable levels.
 ;          In this case it uses .rrcoeffs files, which contain the fitting coefficients.
 ;          The format of the .rrcoeffs files is different than the .rrparams files.
+;       Ver.3, 20-Sep-2024, Peter Young
+;          If filename is specified then the routine now checks if the extension is
+;          "rrcoeffs" and treats it as a level-resolved file; removed an unnecessary print
+;          statement.
 ;-
 
 
 
 IF n_params() LT 2 THEN BEGIN
-  print,'Use:  IDL> rate = ch_rad_recomb( Ion_Name, Temperature )'
+  print,'Use:  IDL> rate = ch_rad_recomb( Ion_Name, Temperature [, /level_resolved, /quiet, '
+  print,'                                 filename= ] )'
   return,-1.
-ENDIF 
+ENDIF
+
+ext=['rrparams','rrcoeffs']
 
 IF n_elements(filename) EQ 0 THEN BEGIN
   convertname,gname,iz,ion
   zion2filename,iz,ion,fname
-  if n_elements(level_resolved) gt 0 then rrfile=fname+'.rrcoeffs' $
-    else rrfile=fname+'.rrparams'
+  if n_elements(level_resolved) gt 0 then rrfile=fname+'.'+ext[1] $
+    else rrfile=fname+'.'+ext[0]
 ENDIF ELSE BEGIN
+ ;
+ ; If the specified file has the rrcoeffs extension, then it is
+ ; treated as a level resolved file. Otherwise file is treated as
+ ; rrparams file, even if /level_resolved has been set.
+ ;
+  filebasename=file_basename(filename)
+  fileparts=filebasename.split('\.')
+  IF fileparts[-1] EQ ext[1] THEN BEGIN
+    level_resolved=1
+    IF NOT keyword_set(quiet) THEN message,/info,/cont,'Specified file will be read as rrcoeffs file.'
+  ENDIF ELSE BEGIN
+    level_resolved=0
+    IF NOT keyword_set(quiet) THEN message,/info,/cont,'Specified file will be read as rrparams file.'
+  ENDELSE 
   rrfile=filename
 ENDELSE
 
 chck=file_search(rrfile,count=count)
 IF count EQ 0 THEN BEGIN
-  IF NOT keyword_set(quiet) THEN print,'%CH_RAD_RECOMB:  The radiative recombination file does not exist. Returning...'
+  IF NOT keyword_set(quiet) THEN message,/info,/cont,'The file '+rrfile+' does not exist. Returning...'
   return,-1.
 ENDIF 
 
@@ -77,8 +100,6 @@ t=temperature
 
 
 openr,lur,rrfile,/get_lun
-if NOT keyword_set(quiet) then print, ' using rrparams file = ',rrfile
-;
 
 if keyword_set(level_resolved) then begin
 
@@ -124,6 +145,7 @@ if keyword_set(level_resolved) then begin
       br=b+c*exp(-t2/t)
     endif else begin
       free_lun,lur
+      print,rrtype
       message,' rrtype not defined'
     ENDELSE
 
@@ -177,7 +199,8 @@ endif else begin
     readf,lur,z,ion,arad,xrad,format='(2i5,2e12.4)'
     recomb=arad/(temperature/1.e+4)^xrad
     free_lun,lur
-  endif else begin
+  endif else BEGIN
+    print,rrtype
     print,' rrtype not defined'
     recomb=1.
   ENDELSE
