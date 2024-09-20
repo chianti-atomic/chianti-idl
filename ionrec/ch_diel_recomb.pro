@@ -24,7 +24,9 @@ FUNCTION ch_diel_recomb,gname,temperature, $
 ;
 ; OPTIONAL INPUTS:
 ;       Filename:  This directly specifies the diel. recombination file
-;                  to be read. If specified, then Gname is ignored. 
+;                  to be read. If specified, then Gname is ignored. If
+;                  the file extension is "drcoeffs", then the file is
+;                  read as a level-resolved file.
 ;
 ; KEYWORD PARAMETERS:
 ;       QUIET:   If set, then no information will be printed to the
@@ -53,6 +55,10 @@ FUNCTION ch_diel_recomb,gname,temperature, $
 ;          Added option to calculate recombination rate coefficients for metastable levels.
 ;          In this case it uses .drcoeffs files, which contain the fitting coefficients.
 ;          The format of the .drcoeffs file is different than the .drparams files.
+;       Ver.4, 20-Sep-2024, Peter Young
+;          If filename is specified then the routine now checks if the extension is
+;          "drcoeffs" and treats it as a level-resolved file; removed an unnecessary print
+;          statement.
 ;-
 
 
@@ -62,18 +68,34 @@ IF n_params() LT 2 THEN BEGIN
   return,-1.
 ENDIF 
 
+ext=['drparams','drcoeffs']
+
 IF n_elements(filename) EQ 0 THEN BEGIN
   convertname,gname,iz,ion
   zion2filename,iz,ion,fname
-  if keyword_set(level_resolved) then drfile=fname+'.drcoeffs' $
-    else drfile=fname+'.drparams'
+  if keyword_set(level_resolved) then drfile=fname+'.'+ext[1]  $
+    else drfile=fname+'.'+ext[0]
 ENDIF ELSE BEGIN
+ ;
+ ; If the specified file has the rrcoeffs extension, then it is
+ ; treated as a level resolved file. Otherwise file is treated as
+ ; rrparams file, even if /level_resolved has been set.
+ ;
+  filebasename=file_basename(filename)
+  fileparts=filebasename.split('\.')
+  IF fileparts[-1] EQ ext[1] THEN BEGIN
+    level_resolved=1
+    IF NOT keyword_set(quiet) THEN message,/info,/cont,'Specified file will be read as a drcoeffs file.'
+  ENDIF ELSE BEGIN
+    level_resolved=0
+    IF NOT keyword_set(quiet) THEN message,/info,/cont,'Specified file will be read as a drparams file.'
+  ENDELSE 
   drfile=filename
 ENDELSE
 
 chck=file_search(drfile,count=count)
 IF count EQ 0 THEN BEGIN
-  IF NOT keyword_set(quiet) THEN print,'%CH_DIEL_RECOMB:  The dielectronic recombination file does not exist. Returning...'
+  IF NOT keyword_set(quiet) THEN message,/info,/cont,'The file '+drfile+' does not exist. Returning...'
   return,-1.
 ENDIF 
 
@@ -85,7 +107,6 @@ z=1
 ion=1
 ;
 openr,lur,drfile,/get_lun
-if NOT keyword_set(quiet) then print, ' using drcoeffs file = ',drfile
 ;
 drtype=1
 dstr = ''
@@ -141,7 +162,7 @@ endif else begin
   if drtype eq 1 then begin
 
     ; a Badnell type
-    if NOT keyword_set(quiet) then print, ' drtype = ',drtype, ' a Badnell type 1 file'
+    if NOT keyword_set(quiet) then print, ' drtype = '+trim(drtype)+ ' a Badnell type 1 file'
 
     readf,lur,dstr
     dsplit = strsplit(dstr, ' ')
@@ -184,7 +205,7 @@ endif else begin
 
   endif else if drtype eq 2 then begin
 
-    if NOT keyword_set(quiet) then print, ' drtype = ',drtype, ' a Shull type 1 file'
+    if NOT keyword_set(quiet) then print, ' drtype = '+trim(drtype)+' a Shull type 1 file'
      ;   a Shull type file
     readf,lur,z,ion,adi,bdi,t0,t1,format='(2i5,4e12.4)'
 
