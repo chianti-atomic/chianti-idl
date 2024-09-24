@@ -270,13 +270,16 @@
 ;     v.11, 29 May 2024, RPD - Sundry changes to formatting, moved index_req check to element stage
 ;     v.12, 3-July-2024, GDZ - changed the definition of the output ionization equilibrium file.
 ;
-;     v.13, 05 Sep 2025, RPD - altered to now use .rrcoeffs and .drcoeffs files for each ion
+;     v.13, 05 Sep 2024, RPD - altered to now use .rrcoeffs and .drcoeffs files for each ion
 ;                rather than loading the recombination coefficients in memory and passing to
 ;                the advanced model rate routine. Added comment to ioneq file if CT is included.
 ;                Included passing quiet keyword to other routines used. Altered reading system time
 ;                when creating ioneq name.
 ;
-; VERSION    v.13
+;     v.14, 24-Sep-2024, Peter Young
+;                The elements can now be specified as lower case strings.
+;
+; VERSION    v.14
 ;-
 
 
@@ -335,7 +338,7 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
     if isa(elements[0],/int) eq 1 then begin
         requested_iz=elements
         count=n_elements(elements)
-    endif else requested_iz=1+where_arr(zlabl, elements, count)
+    endif else requested_iz=1+where_arr(strlowcase(zlabl), strlowcase(elements), count)
     
     if count ne n_elements(elements) then begin 
         err_msg='% CH_CALC_IONEQ: ERROR in the input definition of the elements'
