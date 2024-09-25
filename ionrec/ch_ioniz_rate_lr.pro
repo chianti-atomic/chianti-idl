@@ -121,8 +121,10 @@
 ;               so that temperature is now a keyword. Fixed typo with interpolating rates
 ;               when temp_in is a scalar.
 ;
+;       v.6, 25 Sep 2024  RPD, restored spline interpolation to rates
 ;
-; VERSION:  5
+;
+; VERSION:  6
 ;
 ;- 
 
@@ -243,7 +245,7 @@ function ch_ioniz_rate_lr,filename,temp_in=temp_in,ct=ct,error=error,verbose=ver
       ind3=where(logt_in ge min(logt_file) and logt_in le max(logt_file),n3)
       
       if n3 gt 0 then rates_int[ind3,ii]=$
-        10.0d0^interpol(alog10(rates_file[*,ii]),logt_file,logt_in[ind3]) 
+        10.0d0^interpol(alog10(rates_file[*,ii]),logt_file,logt_in[ind3],/spline) 
       if n1 gt 0 then rates_int[ind1,ii]=r[0] ; take first 
       if n2 gt 0 then rates_int[ind2,ii]=r[-1] ; take last
 
