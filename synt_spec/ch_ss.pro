@@ -544,6 +544,9 @@
 ;          Major rewrite for version 11.
 ;       v.26 19 July 2024 GDZ, fixed the bug when calculating the isothermal option.
 ;       v.27, 23 Sept 2024 GDZ, fixed a bug: the CT option was not passed on.
+;       v.28, 03-Oct-2024, Peter Young
+;          Now saves adv.ioneq to $IDL_TMPDIR; removed output ioneq file widget;
+;          added button for saving the advanced ioneq file.
 ;
 ;
 ; TO DO LIST:
@@ -551,7 +554,7 @@
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.27
+; VERSION     :  V.28
 ;
 ;-
 PRO restore_spectrum
@@ -1565,19 +1568,21 @@ PRO syn_MAIN_Event, Event
         if calc_ioneq_flag eq 1 then begin 
            WIDGET_CONTROL,state.input_ibase1, map=1
            WIDGET_CONTROL,state.input_ct_base, map=1
-           WIDGET_CONTROL,state.output_ioneq_show, map=1
+;           WIDGET_CONTROL,state.output_ioneq_show, map=1
            
 ; by default do not run CT:          
            WIDGET_CONTROL,state.ct_base, map=0
            WIDGET_CONTROL,state.ct_base_sel,set_value=1
            
            WIDGET_CONTROL,state.ioneq_base,map=0
+           widget_control,state.ioneq_save, sens=1
         endif else begin
-           WIDGET_CONTROL,state.output_ioneq_show, map=0
+;           WIDGET_CONTROL,state.output_ioneq_show, map=0
            WIDGET_CONTROL,state.input_ibase1, map=0
            WIDGET_CONTROL,state.input_ct_base, map=0
            WIDGET_CONTROL,state.ct_base, map=0
            WIDGET_CONTROL,state.ioneq_base,map=1
+           widget_control,state.ioneq_save, sens=0
         end       
      end 
 ;-----------------------------------------------------------------------
@@ -1683,24 +1688,24 @@ PRO syn_MAIN_Event, Event
 ;-----------------------------------------------------------------------
 ; check the name of the output .ioneq file
 
-     event.id EQ state.output_ioneq_show:BEGIN
-        dummy=''
-        WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
-        dummy=trim(dummy)
-        if file_exist(dummy) then begin
+     ;; event.id EQ state.output_ioneq_show:BEGIN
+     ;;    dummy=''
+     ;;    WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
+     ;;    dummy=trim(dummy)
+     ;;    if file_exist(dummy) then begin
 
-           state.output_ioneq_file='adv_'+$
-                                   trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
+     ;;       state.output_ioneq_file='adv_'+$
+     ;;                               trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
            
-           WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
+     ;;       WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
            
-           widget_control, state.show_lines , $
-                           set_val='Output ioneq file '+dummy+' exist ! - setting a new file name: '+state.output_ioneq_file
+     ;;       widget_control, state.show_lines , $
+     ;;                       set_val='Output ioneq file '+dummy+' exist ! - setting a new file name: '+state.output_ioneq_file
 
-        endif else state.output_ioneq_file=dummy
+     ;;    endif else state.output_ioneq_file=dummy
         
-     END
-     
+     ;; END
+;     
 ;-----------------------------------------------------------------------
 
      event.id EQ state.all_ions_butt: BEGIN
@@ -2090,6 +2095,12 @@ PRO syn_MAIN_Event, Event
            WIDGET_CONTROL,state.wmaxw1,  set_value=strtrim(string(0.0, format='(f11.4)'),2)
         END 
 
+       ;
+       ; If the advanced ioneq file already exists (from a previous call) then delete.
+       ; 
+        chck=file_info(state.output_ioneq_file)
+        IF chck.exists THEN file_delete,state.output_ioneq_file
+        
 ;define pressure  density  temperature  :
         delvarx, pressure, density, temperature , model_file 
 
@@ -2226,17 +2237,17 @@ PRO syn_MAIN_Event, Event
 
 ; check file name first.
            
-           dummy=''
-           WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
-           dummy=trim(dummy)
-           if file_exist(dummy) then begin
-              state.output_ioneq_file=''
-              WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
-              err_mess = [err_mess, 'Error - output ioneq file exists - change name! ']
-           endif else begin
-              state.output_ioneq_file=dummy
-              ioneq_name=state.output_ioneq_file
-           end
+           ;; dummy=''
+           ;; WIDGET_CONTROL,state.output_ioneq_show, get_v=dummy
+           ;; dummy=trim(dummy)
+           ;; if file_exist(dummy) then begin
+           ;;    state.output_ioneq_file=''
+           ;;    WIDGET_CONTROL,state.output_ioneq_show, set_v=state.output_ioneq_file
+           ;;    err_mess = [err_mess, 'Error - output ioneq file exists - change name! ']
+           ;; endif else begin
+           ;;    state.output_ioneq_file=dummy
+           ;;    ioneq_name=state.output_ioneq_file
+           ;; end
 
            
            WIDGET_CONTROL,state.min_logt_ev, get_v=dummy
@@ -3738,6 +3749,120 @@ PRO syn_MAIN_Event, Event
         END  
      END 
 
+
+     event.id EQ state.ld_save_butt: BEGIN
+       IF n_elements(spectrum) NE  0 THEN BEGIN 
+
+           CASE event.value OF
+
+              1:BEGIN 
+
+;create latex output
+
+                 o_lines = 1
+                 WIDGET_CONTROL,state.oplot_lines,  set_value=0
+                 widget_control, state.show_lines , $
+                                 set_val='The  details of the lines shown will be  saved in the latex file '
+
+                 plot_syn_spectrum
+
+                 good_pix = where(spectrum.lambda GE xrange[0] AND spectrum.lambda LE  xrange[1], ng1)
+
+                 IF ng1 GT 0 THEN BEGIN 
+
+                    good_lines = where((spectrum.lines[*].peak GE o_strength) , ng2 )
+
+                    IF ng2 GT 0 THEN BEGIN 
+
+                       minI = min(spectrum.lines[good_lines].int) > 0 
+
+                       outname = dialog_pickfile(file='ch_ss.tex', tit='Type latex file name ') ;GROUP=
+;                     outname = BIGPICKFILE(file='ch_ss.tex', tit='Type latex file name ') ;GROUP=
+
+                       IF outname NE  '' THEN BEGIN 
+                          
+;                     IF units(1) EQ 'photons' THEN photons = 1 ELSE IF $
+;                       units(1) EQ 'ergs' THEN photons =0 ELSE photons =0
+;                     IF units(0) EQ 'Angstroms' THEN kev = 0 ELSE $ 
+;                       IF units(0) EQ 'keV' THEN kev = 1 ELSE kev = 0
+
+                          ch_line_list, spectrum, outname ,/spectrum,  /latex, $
+                                        minI=minI, wmin=xrange[0],wmax=xrange[1],all=theor_lines
+
+                          widget_control, state.show_lines , /append, $
+                                          set_val='Line details saved in latex file: '+outname
+                          widget_control, state.show_lines , /append, $
+                                          set_val='Now latex three times the file: '+outname
+
+                          str=['Line details saved in latex file: '+outname, $
+                               'Now latex three times the file: '+outname]
+                          result = DIALOG_MESSAGE(str,/info)
+
+                       ENDIF   
+
+                    ENDIF   ELSE  BEGIN 
+;bell
+                       widget_control, state.show_lines , /append, $
+                                       set_val='No lines  to save !!'
+                    ENDELSE  
+                 ENDIF 
+              END 
+              
+              2: BEGIN
+
+;create ascii file
+
+                 o_lines = 1
+                 WIDGET_CONTROL,state.oplot_lines,  set_value=0
+                 widget_control, state.show_lines , $
+                                 set_val='The  details of the lines shown will be  saved in the ascii file '
+
+                 plot_syn_spectrum
+
+                 good_pix = where(spectrum.lambda GE xrange[0] AND spectrum.lambda LE  xrange[1], ng1)
+
+                 IF ng1 GT 0 THEN BEGIN 
+
+                    good_lines = where((spectrum.lines[*].peak GE o_strength) , ng2 )
+
+                    IF ng2 GT 0 THEN BEGIN 
+
+                       minI = min(spectrum.lines[good_lines].int) > 0 
+
+
+                       ff = dialog_pickfile(file='ch_ss.txt', tit='Type ascii file name ') ;GROUP=
+;                     ff = BIGPICKFILE(file='ch_ss.txt', tit='Type ascii file name ') ;GROUP=
+
+                       IF ff NE  '' THEN BEGIN 
+
+;                     IF units(1) EQ 'photons' THEN photons = 1 ELSE IF $
+;                       units(1) EQ 'ergs' THEN photons =0 ELSE photons =0
+;                     IF units(0) EQ 'Angstroms' THEN kev = 0 ELSE $
+;                         IF units(0) EQ 'keV' THEN kev = 1 ELSE kev = 0
+
+                          ch_line_list, spectrum, ff ,/spectrum,  /ascii, $
+                                        minI=minI, wmin=xrange[0],wmax=xrange[1],all=theor_lines
+
+
+                          widget_control, state.show_lines , /append, $
+                                          set_val='Line intensities  saved in the ascii file '+ff
+
+                          str=['Line details saved in the ascii file '+ff]
+                          result = DIALOG_MESSAGE(str,/info)
+
+                       ENDIF 
+                    ENDIF  ELSE  BEGIN 
+;bell
+                       widget_control, state.show_lines , /append, $
+                                       set_val='No lines  to save !!'
+                    ENDELSE  
+                 ENDIF 
+              END  
+           END 
+        END 
+
+     END
+     
      event.id eq state.extras2: BEGIN
 
         IF n_elements(spectrum) NE  0 THEN BEGIN 
@@ -4017,7 +4142,29 @@ PRO syn_MAIN_Event, Event
         END  
      END    
 
-     event.id EQ state.quit:  WIDGET_CONTROL, event.top, /DESTROY ; quit
+     event.id EQ state.ioneq_save: BEGIN
+      ;
+      ; Button for saving the advanced ioneq file.
+      ;
+       chck=file_info(state.output_ioneq_file)
+       IF chck.exists EQ 1 THEN BEGIN 
+         ff = dialog_pickfile(file=file_basename(state.output_ioneq_file), $
+                              title='Type name for ioneq file ')
+         IF ff NE '' THEN BEGIN
+           file_move,state.output_ioneq_file,ff,/overwrite
+           widget_control, state.show_lines , /append, $
+                           set_val='The advanced ioneq file has been saved to '+ff
+
+         ENDIF
+       ENDIF 
+
+     END 
+     
+     event.id EQ state.quit: BEGIN
+       chck=file_info(state.output_ioneq_file)
+       IF chck.exists EQ 1 THEN file_delete,state.output_ioneq_file
+       WIDGET_CONTROL, event.top, /DESTROY ; quit
+     END 
 
   ENDCASE     
 END 
@@ -4135,15 +4282,18 @@ ibase_sel=CW_BGROUP(dummy_sel,['Yes','No'],/row,$
 calc_ioneq_flag=1
 
 output_ioneq_base=WIDGET_BASE(dummy, /col, space=0, map=1)
-output_ioneq_label=widget_label(output_ioneq_base, value='Output file:')
+;output_ioneq_label=widget_label(output_ioneq_base, value='Output file:')
 
-if file_exist('adv.ioneq') then begin
-              output_ioneq_file='adv_'+$
-                  trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
+idl_tmpdir=getenv('IDL_TMPDIR')
+output_ioneq_file=concat_dir(idl_tmpdir,'adv.ioneq')
 
-endif else output_ioneq_file='adv.ioneq'
+;; if file_exist('adv.ioneq') then begin
+;;               output_ioneq_file='adv_'+$
+;;                   trim(string(SYSTIME(/JULIAN, /UTC), format='(f14.4)'))+'.ioneq'
 
-output_ioneq_show=WIDGET_TEXT(output_ioneq_base, value=output_ioneq_file, xsiz=14,/edit)
+;; endif else output_ioneq_file='adv.ioneq'
+
+;output_ioneq_show=WIDGET_TEXT(output_ioneq_base, value=output_ioneq_file, xsiz=14,/edit)
 
 
 ;----------------------------
@@ -4666,20 +4816,40 @@ EXTRAS1 = CW_BGROUP( dummy_base, $
                      /col)
 
 
-EXTRAS2 = CW_BGROUP( dummy_base, $
-                     [ 'Save line details (latex)','Save line details (ascii)'], $
-                     /col)
+extras_base = WIDGET_BASE(dummy_base , col=1)
 
-
-dummy = WIDGET_BASE(plot_base , col=1)
-
-log_lin_info =  WIDGET_button(dummy, value='Lin [/Log]')
+log_lin_info =  WIDGET_button(extras_base, value='Lin [/Log]')
 log = 0
 
-dummy2 = widget_button(dummy, value='SAVE spectrum', menu=2)
-asave_sp = widget_button(dummy2, value='Save spectrum (ascii)')
-gsave_sp = widget_button(dummy2, value='Save spectrum (IDL)' )
-fsave_sp = widget_button(dummy2, value='Save spectrum (FITS)')
+ioneq_save=widget_button(extras_base,value='Save ioneq file')
+
+
+save_base=widget_base(dummy_base,/col)
+
+desc=[ { CW_PDMENU_S, 1, 'SAVE line details' }, $
+       { CW_PDMENU_S, 0, '...to latex' }, $
+       { CW_PDMENU_S, 2, '...ascii' } ] ;, $
+
+ld_save_butt=CW_PDMENU(save_base,desc,uvalue=1,font=font)
+
+
+;; ld_save_butt = widget_button(save_base, value='SAVE line details', menu=2)
+;; ld_save_latex = widget_button(ld_save_butt, value='Save line details (latex)')
+;; ld_save_ascii = widget_button(ld_save_butt, value='Save line details (ascii)' )
+
+sp_save_butt = widget_button(save_base, value='SAVE spectrum', menu=2)
+asave_sp = widget_button(sp_save_butt, value='Save spectrum (ascii)')
+gsave_sp = widget_button(sp_save_butt, value='Save spectrum (IDL)' )
+fsave_sp = widget_button(sp_save_butt, value='Save spectrum (FITS)')
+
+
+;; EXTRAS2 = CW_BGROUP( dummy_base, $
+;;                      [ 'Save line details (latex)','Save line details (ascii)'], $
+;;                      /col)
+
+
+
+
 
 
 ;EXTRAS3 = CW_BGROUP( dummy_base, $
@@ -4708,7 +4878,8 @@ state={calc_int_butt:calc_int_butt,unit_info:unit_info,unit_info2:unit_info2,$
        const_widg:const_widg, const_read:const_read, $
        ibase_sel:ibase_sel,input_ibase1:input_ibase1,ioneq_base:ioneq_base, ioneq_pdmenu:ioneq_pdmenu, ioneq_show:ioneq_show, $
        ioneq_help_button:ioneq_help_button,$
-       output_ioneq_show:output_ioneq_show,output_ioneq_file:output_ioneq_file,$
+;       output_ioneq_show:output_ioneq_show, $
+       output_ioneq_file:output_ioneq_file,$
        calc_ioneq_flag:calc_ioneq_flag,min_logt_ev:min_logt_ev, max_logt_ev:max_logt_ev,dlogt_ev:dlogt_ev ,$
        min_logt:min_logt, max_logt:max_logt,dlogt:dlogt,$
        input_ct_base:input_ct_base,ct_flag:ct_flag, ct_base_sel:ct_base_sel, ct_base:ct_base, ct_show:ct_show,atmosphere_file:atmosphere_file,$
@@ -4728,8 +4899,10 @@ temp_base:temp_base, temp_butt:temp_butt, $
   photoexcitation_rphot_ev:photoexcitation_rphot_ev, $
   photoexcitation_radtemp_ev:photoexcitation_radtemp_ev, $
   log_lin_info:log_lin_info, $
-  extras:extras,extras1:extras1, extras2:extras2,$
-  asave_sp:asave_sp, gsave_sp:gsave_sp, fsave_sp:fsave_sp, $
+  extras:extras,extras1:extras1, extras2:0,$
+       asave_sp:asave_sp, gsave_sp:gsave_sp, fsave_sp:fsave_sp, $
+;       ld_save_latex: ld_save_latex, ld_save_ascii: ld_save_ascii, $
+       ld_save_butt: ld_save_butt, $
 ; extras3:extras3, $
 calc_sp_butt:calc_sp_butt, $
 kev_info:kev_info,kev_yn:kev_yn,  ang_read:ang_read, ang_butt:ang_butt, $
@@ -4743,7 +4916,7 @@ kev_info:kev_info,kev_yn:kev_yn,  ang_read:ang_read, ang_butt:ang_butt, $
   strength_butt:strength_butt, strength_yn:strength_yn,$
        fold_info:fold_info, fold_button:fold_button, fold_show:fold_show, $
        lookup_butt: lookup_butt, lookup_ev: lookup_ev, lookup_available: lookup_available, $
-  grestore_sp:grestore_sp, restore_sp:restore_sp}
+  grestore_sp:grestore_sp, restore_sp:restore_sp, ioneq_save:ioneq_save}
 
 
 WIDGET_CONTROL, SYN_MAIN_base, /REALIZE, set_uvalue=state
