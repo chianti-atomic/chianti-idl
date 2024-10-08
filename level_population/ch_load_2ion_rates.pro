@@ -1,8 +1,12 @@
 FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rrec=no_rrec 
-
 ;+
 ; NAME:
 ;      CH_LOAD_2ION_RATES
+;
+;        This program was developed as part of CHIANTI-VIP. 
+;        CHIANTI-VIP (Virtual IDL and Python) is  a member of the CHIANTI family
+;        mantained by Giulio Del Zanna, to develop additional features and
+;        provide them to the astrophysics community.
 ;
 ; PURPOSE:
 ;      Combines rates for two neighboring ions into single
@@ -85,6 +89,10 @@ FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rr
 ;      Ver.6, 5-Aug-2019, Peter Young
 ;       Fixed bug whereby the DR was not correctly computed if
 ;       temperature was an array.
+;
+;      v.7, 23 April 2024,  Giulio Del Zanna
+;         clearing some memory for large calculations.
+; 
 ;-
 
 
@@ -152,15 +160,25 @@ FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rr
   n2=rates2.n_levels
   nlev_matrix=n1 + n2
 ;
+  
   aa=dblarr(nlev_matrix,nlev_matrix)
   aax=dblarr(nlev_matrix,nlev_matrix)
   qq=DBLARR(nt,nlev_matrix,nlev_matrix)
   ppr=DBLARR(nt,nlev_matrix,nlev_matrix)
-
+  
   aa[0:n1-1,0:n1-1]=rates1.aa
   aax[0:n1-1,0:n1-1]=rates1.aax
   qq[*,0:n1-1,0:n1-1]=rates1.qq
   ppr[*,0:n1-1,0:n1-1]=rates1.ppr
+
+;   print,'Cleaning some memory...'
+  
+      d1=  rates1.ion_data
+      d2= rates1.n_levels
+      d3= rates1.mult
+      delvarx,rates1
+      rates1={ion_data:d1, n_levels:d2, mult:d3}
+        
 
   aa[n1:*,n1:*]=rates2.aa
   aax[n1:*,n1:*]=rates2.aax
@@ -343,6 +361,8 @@ rrec=rates1.ion_data.rrec
 ; Create the autoionization (AI) and dielectronic capture (DC) rate
 ; arrays. 
 ;
+
+     
      ai=dblarr(nlev_matrix,nlev_matrix)
      dc=dblarr(ntm,nlev_matrix,nlev_matrix)
 
@@ -373,7 +393,7 @@ rrec=rates1.ion_data.rrec
      invCm2Ev = 1./8.06554465e+3
      const= planck^3. /2.d/ (2.d*!pi*emass)^(3./2.)
 
-;
+ ;
 ; Only include levels below n_levels. By default this is all levels,
 ; but the keyword n_lev can change this.
 ;
@@ -382,7 +402,7 @@ rrec=rates1.ion_data.rrec
                                 ;
                                 ; Get statistical weights
                                 ;
-
+        
 ; gs is the statistical weight of the autoionizing state
 
         gs=1.+2.*rates1.ion_data.jj[lvl_s[k]-1]
@@ -427,18 +447,22 @@ rrec=rates1.ion_data.rrec
      total_dr=fltarr(nt)
 
      branching_ratio1=fltarr(n_elements(lvl_auto))
+
      
-     for ii=0, n_elements(lvl_auto)-1 do begin 
+     for ii=0L, n_elements(lvl_auto)-1 do begin 
         
         inda=where(lvl_s eq lvl_auto[ii], nna) 
 ; 
         if nna gt 1 then begin 
-           if verbose then print, 'found '+trim(nna)+' lower levels for autoionizing level: ',lvl_s[ii]
+           if verbose then $
+              print, 'found '+trim(nna)+' lower levels for autoionizing level: ',lvl_s[ii]
            a_auto_tot= total(a_auto[inda]) 
         endif else a_auto_tot=a_auto[ii]
 
+;        print, ii, lvl_s[ii], total_dr
+        
 ; Do first the approximation. total the radiative decay down to bound levels
-
+        
         a_tot=total(rates1.ion_data.a_value[indgen(min(lvl_auto)-1),lvl_auto[ii]-1 ])
         
         branching_ratio1[ii]= a_tot/(a_auto_tot+a_tot)
@@ -483,6 +507,7 @@ rrec=rates1.ion_data.rrec
 
      if keyword_set(verbose) then print, 'total DR related to the autoionising levels: ', total_dr
 
+     
      total_dr_badnell=recomb_rate(rates2.ion_data.gname,t,/diel) 
 
      if keyword_set(verbose) then print,'total DR: ',total_dr_badnell

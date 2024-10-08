@@ -1,4 +1,15 @@
 ;+
+; PROJECT
+;
+;        Part of this program was developed within CHIANTI-VIP. 
+;        CHIANTI-VIP (Virtual IDL and Python) is  a member of the CHIANTI family
+;        mantained by Giulio Del Zanna, to develop additional features and
+;        provide them to the astrophysics community.
+;
+;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
+;       Astrophysical Plasmas. It is a collaborative project involving  the
+;       University of Cambridge,  Goddard Space Flight Center, and University of Michigan. 
+;
 ; NAME:
 ;
 ;      CH_AIA_RESP()
@@ -55,9 +66,26 @@
 ;
 ; OPTIONAL INPUTS:
 ;
-;       ABUND_FILE  The name of a CHIANTI abundance file.
+;       ABUND_NAME  The name of a CHIANTI abundance file.
 ;
-;       IONEQ_FILE  The name of a CHIANTI ion balance file.
+;	IONEQ_NAME:  Name of the ionization equilization name to use.  If not
+;		     passed, then the user is prompted for it, unless the
+;                    ADVANCED_MODEL is used.
+;
+;                    **** Note: if (by default) the ADVANCED_MODEL is used,
+;                       IONEQ_NAME will be the name of the file where the new
+;                       ion charge states are written. 
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   calculation, unless the isothermal option is called, or
+;                   an ion fraction file is used. 
+;
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature.
+;                      By default, the file avrett_atmos.dat is read, with data from
+;                      Avrett E.H., Loeser R., 2008, ApJ, 175, 229
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen. 
 ;
 ;
 ; OUTPUT:
@@ -70,6 +98,23 @@
 ;       RESP_X
 ;          the response for the X channel 
 ;
+; KEYWORDS:
+;
+;       ADVANCED_MODEL: include density-dependent (and CT) effects.
+;
+;       CT: include charge transfer in advanced models
+;
+;       NO_AUTO: If set, then the autoionization rates (contained in
+;                the .auto file) are not read. The autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model  introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
+;
+;       DR_SUPPRESSION: Switch on DR suppression from Nikolic et al (2018) for all ions 
+;              not included in the advanced models. The comparison with Summers (1974) suppression
+;              has not been checked for other elements when preparing the models.
+;
+;
 ; CALLS:
 ;       AIA_GET_RESPONSE (AIA), ISOTHERMAL (CHIANTI), INTERPOL (IDL)
 ;
@@ -77,13 +122,20 @@
 ;	Version 1, Giulio Del Zanna, 2018 Dec 5
 ;
 ;
-; VERSION     :  1
+;        v2, 1-jul-2024,  Giulio Del Zanna
+;
+;              Modified for the ionization equilibrium advanced models.
+;
+;
+; VERSION     :  2
 ;
 ;-
 
 
 function ch_aia_resp, time,  pressure=pressure, density=density, $ 
-           abund_name=abund_name, ioneq_name=ioneq_name, verbose=verbose
+                      abund_name=abund_name, ioneq_name=ioneq_name, verbose=verbose,$
+                      no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                      atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
 
 if n_elements(density) gt 0 and  n_elements(pressure) gt 0 then begin 
 print,' % CH_AIA_RESP: Error, you need to define either a constant density or constant pressure' 
@@ -121,7 +173,9 @@ temp = 10.^logt
 
 isothermal, 25, 900, 0.1, temp, lambda,spectrum,list_wvl,list_ident,$
                 pressure=pressure, edensity=density,/photons,/cont , $
-                  abund_name=abund_name, ioneq_name=ioneq_name, verbose=verbose
+            abund_name=abund_name, ioneq_name=ioneq_name, verbose=verbose,$
+            no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                  atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
 
 
 comment=[comment, ' with the elemental abundance file: '+abund_name]

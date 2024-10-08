@@ -69,6 +69,9 @@ pro read_ioneq,filename,t,ioneq,ref, sngl_ion=sngl_ion, element=element
 ;       Ver.9, 10-Mar-2020, Peter Young
 ;           Fixed bug whereby dielectronic ions (specified by
 ;           sngl_ion) were not assigned the correct ion fractions. 
+;
+;       Ver.10, 27-Mar-2024, RPD
+;           Increased length of comment array for advanced models
 ;-
 
 
@@ -137,7 +140,7 @@ endif
 endwhile
 ;
 ;  get references
-refstring=strarr(100)
+refstring=strarr(500)
 nref=0
 ;
 string1=' '

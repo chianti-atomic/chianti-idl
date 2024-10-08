@@ -8,25 +8,36 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 
 ;+
 ; NAME:
+;
 ;       CH_SETUP_ION
 ;
+;
 ; PURPOSE:
+;
 ;       A new version of setup_ion.pro that puts the atomic parameters
 ;       into a structure rather than common blocks. The structure can
 ;       be directly sent to the routine pop_solver for computing level
 ;       populations. 
 ;
+;
 ; CATEGORY:
+;
 ;       CHIANTI; data setup.
 ;
+;
 ; CALLING SEQUENCE:
+;
 ;	Result = CH_SETUP_ION( Ion_Name )
 ;
+;
 ; INPUTS:
+;
 ;	Ion_Name:  The name of an ion in CHIANTI format (e.g., 'o_6'
 ;	           for O VI).
 ;
+;
 ; OPTIONAL INPUTS:
+;
 ;	Wvlmin:  A wavelength in angstroms. If set, then the routine
 ;	         checks if the ion has any wavelengths above
 ;	         WVLMIN. If not, then the routine exits, and an empty
@@ -60,6 +71,7 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;                 level is less than or equal to N_LEVELS. It does not
 ;                 affect the size of the arrays in the output structure.
 ;
+;
 ; KEYWORD PARAMETERS:
 ;
 ;       QUIET:   If set, then information messages are not printed.
@@ -82,6 +94,7 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;                option and gives a significant time saving.
 ;
 ; OUTPUTS:
+;
 ;       A structure with the tags:
 ;       .gname   Name of the ion in CHIANTI format.
 ;       .jj      Array containing J-values for all levels.
@@ -113,7 +126,9 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ; 
 ;       If a problem is found, then the integer -1 is returned.
 ;
+;
 ; OPTIONAL OUTPUTS:
+;
 ;       Index_Wgfa:  This is an index of the WGFA structure that picks
 ;                    out those transitions that satisfy the WVLMIN
 ;                    and/or WVLMAX conditions, and the A_VALUE NE 0
@@ -121,18 +136,33 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;                    CH_SYNTHETIC routine (see "anylines" in this
 ;                    routine). 
 ;
+;
 ; EXAMPLE:
+;
 ;       IDL> output=ch_setup_ion('o_6')
 ;       IDL> output=ch_setup_ion('fe_13',wvlmin=170,wvlmax=210)
 ;       IDL> output=ch_setup_ion('si_12',path='/mydata/si_12')
 ;
+;
 ; CALLS:
+;
 ;       READ_WGFA_STR, CONVERTNAME, READ_ELVLC, READ_SCUPS,
 ;       READ_IONREC, R2W, READ_SPLUPS, READ_AUTO, CH_IP, read_rrlvl
 ;
-; MODIFICATION HISTORY:
+;
+; PREVIOUS HISTORY:
+;
+;       Modified from setup_ion.pro by PRY
+;
+;
+; WRITTEN:
+;
 ;      Ver.1, 28-Jun-2017, Peter Young
 ;         Modified from setup_ion.pro.
+;
+;
+; MODIFICATION HISTORY:
+;
 ;      Ver.2, 9-Aug-2017, Peter Young
 ;         Added the elvlc structure to the output; implemented
 ;         /noionrec.
@@ -167,6 +197,14 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;         reduces number of levels); added n_levels optional input.
 ;      Ver.12, 12-Jun-2023, Peter Young
 ;         Populates the new diel tag of wgfastr.
+;      v.13, 14 Sept 2023, GDZ, modified how the number of levels is set
+;               so the keyword /no_auto (to exclude the autoionizing states)
+;               can be used.
+;
+;
+; VERSION     : 13
+;
+; 
 ;-
 
 
@@ -404,27 +442,45 @@ IF n_elements(abund_file) NE 0 THEN BEGIN
 ENDIF 
 
 
+levmax=max([splstr_levmax,ionrec_levmax,rrec_levmax])
+
 ;
 ; Add autoionization rates stored in the .auto files (if available).
+; GDZ - modified this part to remove the autoionizing states if required. 
+
+IF file_exist(autoname)  THEN BEGIN 
 ;
-autostr_levmax=-1
-IF file_exist(autoname) AND NOT keyword_set(no_auto) THEN BEGIN 
-  IF NOT keyword_set(quiet) THEN BEGIN
-    print,'% CH_SETUP_ION: autoionization rates added to output.'
-  ENDIF 
- ;
   read_auto, autoname, autostr=autostr
+
+  if keyword_set(no_auto) then begin
+
+   IF NOT keyword_set(quiet) THEN $
+    print,'% CH_SETUP_ION: autoionization rates were not added to output upon request and other data removed.'
+
+; the last bound state must be one below the first autoionizing state:   
+ autostr_levmax=min(autostr.lvl2)-1
+ 
+endif else begin
+  
   autostr_levmax=max(autostr.lvl2)
   output=add_tag(output,autostr,'autostr')
+
+   IF NOT keyword_set(quiet) THEN $
+    print,'% CH_SETUP_ION: autoionization rates added to output.'
+
+endelse 
+  
+levmax=min([levmax, autostr_levmax])
+
 ENDIF 
 
-levmax_all=[splstr_levmax,ionrec_levmax,rrec_levmax,autostr_levmax]
-k=where(levmax_all NE -1)
-levmax=max(levmax_all)
-IF n_elements(n_levels) NE 0 THEN levmax=min([n_levels,levmax])
+IF n_elements(n_levels) NE 0 THEN n_levels=min([n_levels,levmax]) else n_levels=levmax
+
+; GDZ: note, n_levels gets modified inside this routine, then passed on.
+; We could remove the autoionising states here but it is done in load_ion_rates
 
 index_wgfa=ch_setup_index_wgfa(wgfastr,wvlmin=wvlmin,wvlmax=wvlmax, $
-                               obs_only=obs_only,count=count, levmax=levmax)
+                               obs_only=obs_only,count=count, levmax=n_levels)
 
 IF count EQ 0 THEN BEGIN
   index_wgfa=-1

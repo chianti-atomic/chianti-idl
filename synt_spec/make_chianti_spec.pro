@@ -352,6 +352,10 @@ on_error,0
 ;               v.34, 07-Dec-2023, Peter Young
 ;                 Switched indgen to lindgen for definition of binsize
 ;                 in case there are a large number of wavelength points.
+;
+;               v.35, 19-Aug-2024, Peter Young
+;                 Fixed bug for case where FWHM is much smaller than
+;                 wavelength pixel size.
 ;-
 
 IF  n_params() lt 3 then begin
@@ -784,7 +788,7 @@ IF nl NE  0  THEN BEGIN
       ENDIF  ELSE spectrum = hastogram(wvl[index], grid, wts=intensities[index])
 ;spectrum = rebinw(gspectrum, nlambda, lambda, /perbin)
 
-
+      
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;spectrum in units/Angstrom:
@@ -839,7 +843,7 @@ IF nl NE  0  THEN BEGIN
 
             ENDIF ELSE      peak[jj]= intensities[i] 
 
-         END  
+          ENDELSE 
       ENDFOR  
 
 
@@ -882,12 +886,21 @@ IF nl NE  0  THEN BEGIN
 
 
          IF (ind[0] EQ -1) OR (N_ELEMENTS(ind) EQ 1) THEN BEGIN
-
-            getmin = MIN(ABS(lambda-wvl[i]),ind)
-            spectrum[ind] = spectrum[ind] + $
-              intensities[i]/angpix[ind]
-
-            peak[jj]= intensities[i] /angpix[ind]
+          ;
+          ; PRY, 19-Aug-2024: I've added the check below for cases where
+          ; the ch_synthetic wavelengh range is larger than the
+          ; make_chianti_spec wavelength range. I was finding artificially
+          ; large intensities in the end pixel of LAMBDA from lines
+          ; longward of the wavelength range (which shouldn't be in the
+          ; spectrum).
+          ;
+           IF wvl[i] LE max(lambda)+2.5*fwhm AND wvl[i] GE min(lambda)-2.5*fwhm THEN BEGIN 
+             getmin = MIN(ABS(lambda-wvl[i]),ind)
+             spectrum[ind] = spectrum[ind] + $
+                             intensities[i]/angpix[ind]
+             
+             peak[jj]= intensities[i] /angpix[ind]
+           ENDIF 
 
          ENDIF ELSE BEGIN
 
