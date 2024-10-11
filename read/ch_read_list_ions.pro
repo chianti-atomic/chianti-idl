@@ -32,24 +32,29 @@
 ;
 ; INPUTS:
 ;
-;	filename:   name of the file
+;	None.
 ;
+; OPTIONAL INPUTS:
+;
+;       filename:   Name of the file to be read. If not specified then the
+;                   default masterlist.ions file will be read.
 ;	
 ; KEYWORD PARAMETERS:
 ;
-;	none
+;	ADVANCED:  If set, then reads the default advanced model masterlist file.
 ;
 ;
 ; OUTPUTS:
 ;
 ;	out:   a structure with
 ;              mlist:  string with the ion name
-;              nlevels: the number of levels to include in the advanced models
+;              nlevels: the number of levels to include in the advanced models. For
+;                       the regular masterlist, the values will all be -1.
 ;
 ;
 ; OPTIONAL OUTPUTS:
 ;
-;     NONE
+;       Count:  An integer giving the number of ions in the masterlist.
 ;
 ;
 ; PREVIOUS HISTORY:
@@ -65,21 +70,32 @@
 ;
 ; MODIFICATION HISTORY:
 ;
-;       NONE
+;       Ver.2, Peter Young, 11-Oct-2024
+;         If filename is not input, then the routine reads the default masterlist
+;         file ; the /advanced keyword has now been implemented; added count=
+;         optional output.
 ;
 ;
-; VERSION     : 1
+; VERSION     : 2
 ;
 ;- 
 
-function ch_read_list_ions,filename
+function ch_read_list_ions, filename, advanced=advanced, count=count
 ;
 
-;
-if filename eq '' then begin
-   print,' ERROR, file not defined'
-       return,-1
-    endif
+count=0
+
+IF n_elements(filename) EQ 0 THEN BEGIN
+  IF keyword_set(advanced) THEN BEGIN
+    dir=concat_dir(!xuvtop,'ancillary_data')
+    dir=concat_dir(dir,'advanced_models')
+    filename=concat_dir(dir,'advmodel_list.ions')
+  ENDIF ELSE BEGIN 
+    dir=concat_dir(!xuvtop,'masterlist')
+    filename=concat_dir(dir,'masterlist.ions')
+  ENDELSE 
+ENDIF 
+
 
 if not file_exist(filename) then begin 
    print,' ERROR, input file does not exist'
@@ -133,6 +149,8 @@ mlist=mlist[1:*]
 nlevels=nlevels[1:*]
 
 out={list_ions:mlist, nlevels:nlevels}
+
+count=n_elements(mlist)
 
 return, out 
 
