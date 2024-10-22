@@ -76,8 +76,8 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ;               multiplied by the element abundance.
 ;      PHOTONS: If set, then the contribution function is in photons
 ;               units rather than ergs.
-;      ADVANCED_MODEL: If set uses the advanced models to compute the
-;               ionization fraction.
+;      ADVANCED_MODEL: The advanced ion balance models are used by default,
+;               and they are switched off by setting advanced_model=0.
 ;
 ; OUTPUTS:
 ;      An IDL structure with the tags:
@@ -124,6 +124,9 @@ FUNCTION ch_lookup_gofnt, ionname, wmin=wmin, wmax=wmax, log_temp=log_temp, $
 ;        must match the size of the temperature array.
 ;      Ver.4, 26-Sep-2024, Peter Young
 ;        Added /advanced_model keyword.
+;      Ver.5, 22-Oct-2024, Peter Young
+;        Changed behavior of /advanced_model so that it is switched on by
+;        default. This is consistent with gofnt.pro.
 ;-
 
 
@@ -133,10 +136,12 @@ IF n_params() LT 1 THEN BEGIN
   print,' Keyword parameters:'
   print,'   wmin=, wmax=, log_temp=, log_dens=, log_press=, abund_file=, /noabund,'
   print,'   /photons, lower_levels=, upper_levels, aval_struc=, ioneq_file= dir_lookup='
-  print,'   /advanced_model'
+  print,'   advanced_model='
   print,''
+  print,' Set advanced_model=0 to switch off the advanced ion models.'
   return,-1
 ENDIF 
+
 
 
 ;
@@ -263,18 +268,25 @@ contrib_data=dblarr(nt)
 convertname,ionname,iz,iion
 
 ;
-; Read the ioneq file and extract the ion fractions.
+; Read the ioneq file and extract the ion fractions. Note that the advanced
+; model ioneq file is the default, and the coronal approximation file
+; (!ioneq_file) is only used if advanced_model=0
 ;
-IF keyword_set(advanced_model) THEN BEGIN
-  IF np GT 0 THEN press=10.^log_press
-  IF nd GT 0 THEN dens=10.^log_dens
-  ioneq_data=ch_calc_ioneq(10.^log_temp, dens=dens, press=press, /adv, ele=iz)
-  frac=reform(ioneq_data[*,iz-1,iion-1])
-  ioneq_file=''
-ENDIF ELSE BEGIN
+IF n_elements(advanced_model) EQ 0 THEN advanced_model=1b
+;
+IF NOT keyword_set(advanced_model) THEN BEGIN
   IF n_elements(ioneq_file) EQ 0 THEN ioneq_file=!ioneq_file
   read_ioneq,ioneq_file,ioneq_t,ioneq_frac,ref
   frac=get_ieq(10.^log_temp,iz,iion,ioneq_logt=ioneq_t,ioneq_frac=ioneq_frac)
+ENDIF ELSE BEGIN
+  IF np GT 0 THEN press=10.^log_press
+  IF nd GT 0 THEN dens=10.^log_dens
+  ioneq_data=ch_calc_ioneq(10.^log_temp, dens=dens, press=press, /adv, ele=iz, $
+                           outname=outname)
+  chck=file_info(outname)
+  IF chck.exists EQ 1 THEN file_delete,outname
+  frac=reform(ioneq_data[*,iz-1,iion-1])
+  ioneq_file=''
 ENDELSE 
 
 
