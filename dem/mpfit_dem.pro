@@ -111,8 +111,10 @@ pro mpfit_dem, obs_int, responses, logt_responses, obs_err=obs_err,max_logt=max_
 ;               v.4,  8 Aug 2017, GDZ. Reduced number of default nodes
 ;               to 6. 
 ;               v.5, 6-Jul-2018 GDZ.  Added some checking and simplifications. 
+;               v.6, 6-Nov-2023 GDZ, bug fix: when in error, return the input
+;                    spline DEM values.
 ;
-; Version     : 5  6-Jul-2018
+; Version     : 6
 ;-
 
 error=0
@@ -136,7 +138,8 @@ if N_ELEMENTS(spl_logt) gt 0  then begin
       error=1
       if verbose then print,'Error ! number of spline nodes too big '
       return
-   endif else  begin 
+   endif else  begin
+; redefine the log T into the fine dt grid :      
       n_spl = N_ELEMENTS(spl_logt) 
       max_logt=max(spl_logt) 
       min_logt=min(spl_logt) 
@@ -245,7 +248,9 @@ if status le 0 then begin
    out_logdem[*]=0
    
    error=1
-   
+;GDZ return the input spline values:
+   spl_logdem=input_spl_logdem
+
    return
    
 endif else begin 
@@ -264,7 +269,10 @@ endif else begin
    if(count gt 0) then chisq[idx] = 0.0
    
    chisq = total(chisq)
-   
+
+      out_logdem=solv_factor +out_logdem
+   spl_logdem=solv_factor +spl_logdem
+
    if keyword_set(verbose) then begin 
       
       print, '* Total Chi-squared = '+trim(chisq)
@@ -272,19 +280,19 @@ endif else begin
       print, 'Preditced int=', arr2str(i_mod,',')
       print, 'ratio (predicted/obs)=', arr2str(i_mod/obs_int,',')            
       
-      window,0
+;;       window,0
       
-      plot, chars=1.4, out_logt, solv_factor +out_logdem,psym=10 ,/yno ; xr=[4,7],/xst
-      oplot,  spl_logt, solv_factor +spl_logdem,psym=5,syms=2
+;;       plot, chars=1.4, out_logt, out_logdem,psym=10 ,/yno ; xr=[4,7],/xst
+;;       oplot,  spl_logt, spl_logdem,psym=5,syms=2
       
-; over plot the original DEM:
-      oplot,  spl_logt,input_spl_logdem, psym=6
+;; ; over plot the original DEM:
+;;       oplot,  spl_logt,input_spl_logdem, psym=6
+
+;; for ii=0, n_elements(spl_logt)-1 do print, spl_logt[ii], spl_logdem[ii]
       
    endif 
-   
-   out_logdem=solv_factor +out_logdem
-   spl_logdem=solv_factor +spl_logdem
-   
+
+
 endelse                         ; success 
 
 

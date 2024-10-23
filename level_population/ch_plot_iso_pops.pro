@@ -37,6 +37,8 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;       CONFIG_MATCH: If set, then a configuration match is required
 ;               otherwise no match will be returned.
 ;       QUIET:   If set, then a plot is not produced.
+;       BUFFER:  If set, then plot gets sent to buffer rather than the
+;                screen.
 ;
 ; OPTIONAL OUTPUTS:
 ;       Outstr:  A structure containing the data that has been
@@ -71,12 +73,15 @@ function ch_plot_iso_pops, ionname, level, ldens=ldens, neutrals=neutrals, quiet
 ;          fixed.
 ;       Ver.6, 07-Apr-2023, Peter Young
 ;          I now list the levels on the right side of the plot.
+;       Ver.7, 15-Oct-2024, Peter Young
+;          Now uses ch_read_list_ions instead of read_masterlist; added /buffer
+;          keyword.
 ;-
 
 
 IF n_params() LT 2 THEN BEGIN
   print,'Use:  IDL> p=ch_plot_iso_pops( ion_name, level [, ldens=, /neutrals, /quiet, '
-  print,'                               outstr=, /config_match ])'
+  print,'                               outstr=, /config_match, /buffer ])'
   return,-1
 ENDIF 
 
@@ -106,10 +111,11 @@ FOR i=0,nlev-1 DO BEGIN
 ENDFOR 
 
 
-
-mlistname=concat_dir(!xuvtop,'masterlist')
-mlistname=concat_dir(mlistname,'masterlist.ions')
-read_masterlist,mlistname,mlist
+;
+; Get masterlist.
+;
+list=ch_read_list_ions()
+mlist=list.list_ions
 
 
 ;
@@ -165,7 +171,7 @@ IF NOT keyword_set(quiet) THEN BEGIN
          ytitle='Level population', $
          xtitle='Atomic number',/current,xticklen=0.020,yticklen=0.015,/ylog, $
          font_size=fs,_extra=extra,/xsty, $
-         title=title,pos=pos)
+         title=title,pos=pos,buffer=buffer)
 
   FOR i=0,nlev-1 DO BEGIN
     pop=outstr.pop[i]

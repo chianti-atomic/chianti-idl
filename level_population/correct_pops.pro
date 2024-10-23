@@ -82,7 +82,11 @@ FUNCTION correct_pops, pp, t, xne, ionrec, cc, crate=crate, rrate=rrate, $
 ;
 ;    Ver.7, 20-Mar-2015, Peter Young
 ;        There was the possibility of a divide-by-zero error if the
-;        excitation rate to a level was zero so this has been fixed. 
+;        excitation rate to a level was zero so this has been fixed.
+;
+;    v.8 19 July 2024 GDZ, fixed the bug when there is a single temperature
+;         in the ion balance, which can occurr for version 11. 
+
 ;-
 
 
@@ -119,10 +123,17 @@ temp_ioneq=reform(ionrec.temp_ioneq)
 ; Determines the ion fractions of the chosen ion, and of the two adjacent
 ; ions
 ;
+; GDZ change to allow a single log T in the ionrec.
+
+if n_elements(temp_ioneq) eq 1 then begin
+   ion_low=ionrec.ioneq[0]
+   ion_middle=ionrec.ioneq[1]
+   ion_high=ionrec.ioneq[2]
+endif else begin 
 ion_low=ion_frac_interp(t,temp_ioneq,reform(ionrec.ioneq[*,0]))
 ion_middle=ion_frac_interp(t,temp_ioneq,reform(ionrec.ioneq[*,1]))
 ion_high=ion_frac_interp(t,temp_ioneq,reform(ionrec.ioneq[*,2]))
-
+end 
 
 ;
 ; if ion fraction zero then just return the population array

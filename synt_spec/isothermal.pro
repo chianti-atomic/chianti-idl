@@ -1,5 +1,16 @@
-
 ;+
+; PROJECT
+;
+;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
+;       Astrophysical Plasmas. It is a collaborative project involving  the
+;       University of Cambridge,  Goddard Space Flight Center, and University of Michigan. 
+;
+;        Part of this program was developed within CHIANTI-VIP. 
+;        CHIANTI-VIP (Virtual IDL and Python) is  a member of the CHIANTI family
+;        mantained by Giulio Del Zanna, to develop additional features and
+;        provide them to the astrophysics community.
+;
+;
 ; NAME:
 ;       ISOTHERMAL
 ;
@@ -20,6 +31,7 @@
 ;       TEMP      Electron temperature (or array).
 ;
 ; OPTIONAL INPUTS:
+;
 ;       PRESSURE  Electron pressure in units of cm^-3 K.
 ;
 ;       EDENSITY  Electron density in units of cm^-3.
@@ -53,10 +65,29 @@
 ;		     the user is prompted for it.
 ;
 ;	IONEQ_NAME:  Name of the ionization equilization name to use.  If not
-;		     passed, then the default CHIANTI file
-;		     (!ioneq_file) is used.
+;		     passed, then the user is prompted for it, unless the
+;                    ADVANCED_MODEL is used.
+;
+;                    **** Note: if (by default) the ADVANCED_MODEL is used,
+;                       IONEQ_NAME will be the name of the file where the new
+;                       ion charge states are written. 
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   calculation, unless the isothermal option is called, or
+;                   an ion fraction file is used. 
+;
+;
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature.
+;                      By default, the file avrett_atmos.dat is read, with data from
+;                      Avrett E.H., Loeser R., 2008, ApJ, 175, 229
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen. 
+;
+;
 ;
 ; KEYWORD PARAMETERS:
+;
 ;       NOPROT     Switch off the inclusion of proton rates in the level 
 ;                  balance.
 ;
@@ -68,8 +99,24 @@
 ;  
 ;       ALL        Include all lines, i.e. also those for which wavelengths 
 ;                  are only theoretical and not observed. 
+;       ADVANCED_MODEL: include density-dependent (and CT) effects.
+;
+;       CT: include charge transfer in advanced models
+;
+;       NO_AUTO: If set, then the autoionization rates (contained in
+;                the .auto file) are not read. The autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model  introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
+;
+;       DR_SUPPRESSION: Switch on DR suppression from Nikolic et al (2018) for all ions 
+;              not included in the advanced models. The comparison with Summers (1974) suppression
+;              has not been checked for other elements when preparing the models.
+;
+;
 ;
 ;  OUTPUTS:
+;
 ;        LAMBDA   Wavelength array of calculated synthetic spectrum.
 ;
 ;        SPECTRUM Intensity array. The units depend on the user inputs to 
@@ -81,6 +128,7 @@
 ;                   synthetic_plot.pro
 ;
 ; PROGRAMMING NOTES:
+;
 ;        Intensity Units
 ;        ---------------
 ;        The units are of the form photons cm^3 s^-1 sr^-1 * (units of EM), 
@@ -167,6 +215,10 @@
 ;              Now uses abund_file and ioneq_file inputs for
 ;              two_photon and freebound; removed the elements common
 ;              block; updated header.
+;
+;        v16, 1-Feb-2024,  Giulio Del Zanna
+;
+;              Modified for the ionization equilibrium advanced models.
 ;-
 
 
@@ -175,7 +227,10 @@ PRO isothermal, wmin,wmax,wavestep,temp,lmbda,spectrum,list_wvl,list_ident,$
       sngl_ion=sngl_ion, abund_name= abund_name , ioneq_name=ioneq_name, $
       verbose=verbose, min_abund=min_abund, cont=cont, $
       masterlist=masterlist, noprot=noprot, radtemp=radtemp, $
-      rphot=rphot, em=em,all=all
+                rphot=rphot, em=em,all=all,$
+                no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                  atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
+
 
 
 IF n_params() LT 6 THEN BEGIN
@@ -235,7 +290,8 @@ ENDELSE
 ; PRY, 24-Jul-2018
 ; Get rid of widget selection for ioneq file
 ;
-IF n_elements(ioneq_name) EQ 0 THEN ioneq_name=!ioneq_file
+; GDZ - revert to original way, ask to choose ionization equilibrium file for transparency.
+;IF n_elements(ioneq_name) EQ 0 THEN ioneq_name=!ioneq_file
 
 
 IF n_elements(abund_name) EQ 0 THEN BEGIN 
@@ -254,7 +310,10 @@ ch_synthetic,wmin,wmax,out=out, press=pressure, err_msg=err_msg, $
      photons=photons, masterlist=masterlist, noprot=noprot, $
      radtemp=radtemp, rphot=rphot, verbose=verbose, progress=progress, $
      density=edensity, no_sum_int=no_sum_int, logt_isothermal=alog10(temp), $
-     logem_isothermal=logem_isothermal,all=all
+             logem_isothermal=logem_isothermal,all=all,$
+             no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                  atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
+
 
 IF err_msg [0]  NE  '' THEN BEGIN 
   print, '% ISOTHERMAL: Error - EXIT'

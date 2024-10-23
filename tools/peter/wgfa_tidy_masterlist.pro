@@ -30,13 +30,25 @@ PRO wgfa_tidy_masterlist, overwrite=overwrite
 ;      created in the current working directory and summarizes the
 ;      results of wgfa_tidy for each ion.
 ;
+; CALLS:
+;      CH_READ_LIST_IONS, WGFA_TIDY
+;
 ; MODIFICATION HISTORY:
 ;      Ver.1, 14-Jan-2019, Peter Young
+;      Ver.2, 15-Oct-2024, Peter Young
+;        Now includes any ions in the advanced ion masterlist that are
+;        not in the regular masterlist.
 ;-
 
 
-mlistfile=concat_dir(!xuvtop,'masterlist/masterlist.ions')
-read_masterlist,mlistfile,mlist
+;
+; Combine the standard and advanced masterlists.
+;
+mlist1=ch_read_list_ions()
+mlist2=ch_read_list_ions(/advanced)
+;
+mlist=[mlist1.list_ions,mlist2.list_ions]
+mlist=mlist[uniq(mlist,sort(mlist))]
 
 ;
 ; Remove the "d" ions

@@ -105,6 +105,29 @@
 ;                       is assumed when using the RADTEMP keyword in the call
 ;                       to pop_solver.
 ;
+;       ADVANCED_MODEL: include density-dependent and CT effects.
+;
+;       CT: include charge transfer in advanced models
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   calculation
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature.
+;                      By default, the file avrett_atmos.dat is read, with data from
+;                      Avrett E.H., Loeser R., 2008, ApJ, 175, 229
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen. 
+;
+;       NO_AUTO: If set, then the autoionization rates (contained in
+;                the .auto file) are not read. The autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model  introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
+;
+;       DR_SUPPRESSION: Switch on DR suppression from Nikolic et al (2018) for all ions 
+;              not included in the advanced models. The comparison with Summers (1974) suppression
+;              has not been checked for other elements when preparing the models.
+;
 ; Calls       : 
 ;		ch_synthetic
 ;
@@ -184,7 +207,17 @@
 ;                  Also added keywords to include photoexcitation in
 ;                  the input, rphot, radtemp,RADFUNC
 ;
-; VERSION     :    V.13
+;       V.14, 4 Nov 2023, GDZ
+;           Major rewrite, adding the advanced model option (the default),
+;           and also NO_AUTO: If set, then the autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model I introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
+;           Added passing ioneq_name
+;
+;       v.15, 1-Jul-2024, GDZ, added  dr_suppression
+;
+; VERSION     :    V.15
 ;
 ;
 ;-        
@@ -192,7 +225,9 @@
 
 pro get_contributions,input, out,  output_name=output_name,density=density, pressure=pressure,$
                       cut_contrib=cut_contrib,n_ch=n_ch,$
-                      rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC
+                      rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC, ioneq_name=ioneq_name,$
+                no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
 
 
 ;ON_ERROR, 2
@@ -220,21 +255,6 @@ n_obs=n_elements(obs_int)
 
 exclu_obs_wvl_no_teo=fltarr(n_obs)
 
-;pick up the Ionization Equilibrium File:
-;----------------------------------------
-
-ioneq_name=pickfile(path= concat_dir(!xuvtop, '/ioneq'),filter='*.ioneq',title='Select Ionization Equilibrium File')
-
-ff = findfile(ioneq_name)
-IF  ff(0)  NE ''  THEN $
-   read_ioneq,ioneq_name,ioneq_logt,ioneq,ioneq_ref ELSE BEGIN 
-   message, 'Error,  no ioneq file found !'
-   err_msg = 'Error,  no ioneq file found !'
-   return
-END 
-
-
-n_dem_temp=n_elements(ioneq_logt)
 
 ; inizialise the arrays:                
 ;----------------------
@@ -246,9 +266,6 @@ ch_z=intarr(n_ch,n_obs)
 ch_ion=intarr(n_ch,n_obs)
 ch_id=strarr(n_ch,n_obs)
 
-;; ;this array will have the C(T) 
-;; ;-----------------------------
-ch_contr_wa=fltarr(n_dem_temp,n_ch,n_obs)
 
 ;; ;this array will have the G(T)=C(T)*abundances !!!
 ;; ;------------------------------------------------- 
@@ -270,12 +287,32 @@ FOR iobs=1, n_obs-1 DO BEGIN
 
 ENDFOR
 
-print,' getting CHIANTI contribution functions G(T)  for ALL the  observed lines'
+print,'% GET_CONTRIBUTIONS:  getting contribution functions G(T) for ALL the observed lines'
 
+; if not set, and if the minimum wavelength is above 50 Angstroms, set NO_AUTO=1
+
+if not keyword_set(NO_AUTO) and w1 gt 50 then begin
+print, '% GET_CONTRIBUTIONS: automatically setting NO_AUTO=1 to speed up the calculations '
+   NO_AUTO=1
+end
+
+if  keyword_set(NO_AUTO) and w1 lt 50 then begin
+print, '% GET_CONTRIBUTIONS WARNING: you have set NO_AUTO=1 so no satellite lines will be calculated! '
+end
+
+   
 ch_synthetic, w1, w2, output=output_ch, err_msg=err_msg, msg=msg, $
               pressure=pressure, density=density, $
               /all, ioneq_name=ioneq_name, $
-              noprot=noprot, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC, /goft
+              noprot=noprot, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC, /goft,$
+              no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+              atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
+
+
+n_dem_temp=n_elements(ioneq_logt)
+;; ;this array will have the C(T) 
+;; ;-----------------------------
+ch_contr_wa=fltarr(n_dem_temp,n_ch,n_obs)
 
 
 ;      check to see if there any wavelength matches -  loop over the obs lines.
@@ -359,7 +396,11 @@ print, 'savefile '+output_name+'_gt.genx  saved ! '
 output_contributions=output_name+'.contributions'
 openw,lucontr,output_contributions,/get_lun
 
-printf,lucontr,ioneq_name
+; v.11: do not print the ioneq name, but rather the grid of log T values:
+; printf,lucontr,ioneq_name
+printf, lucontr, arr2str(ioneq_logt,' ',/trim)
+
+
 if keyword_set(pressure) then  begin
    const_net= 'constant pressure: '+$
               string(format='(e9.2)',pressure) +' [ cm!e-3!n !eo!nK ]' 
