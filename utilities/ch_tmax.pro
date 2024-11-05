@@ -1,4 +1,6 @@
-FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp
+FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp, $
+                  advanced_model=advanced_model, pressure=pressure, $
+                  density=density, quiet=quiet
 
 ;+
 ; NAME:
@@ -22,6 +24,15 @@ FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp
 ;     Ioneqname: The routine reads the default CHIANTI ion balance
 ;                file (!ioneq_file). To use a different ion balance
 ;                file, specify the full pathname with this keyword.
+;     Pressure:  Specify the pressure (units: K cm^-3) for which the
+;                ion balance should be calculated. Only valid for
+;                advanced models.
+;     Density:   Specify the density (units: cm^-3) for which the
+;                ion balance should be calculated. Only valid for
+;                advanced models.
+;     Advanced_Model:  The advanced models are switched on by default.
+;                      To not use the advanced models, set
+;                      advanced_model=0
 ;
 ; KEYWORD PARAMETERS:
 ;     LOG:    If set, then the logarithm (base 10) of T_max is
@@ -30,16 +41,24 @@ FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp
 ;             a logT scale with 0.01 dex steps. Note that the
 ;             interpolation is done on the logarithm of the ion
 ;             fraction values.
+;     QUIET:  If set, then information messages are suppressed.
 ;
 ; OUTPUTS:
-;     Returns the temperature of maximum ionization in K. If the ion
-;     balance file is not found, then a value of -1 is returned.
+;     Returns the temperature of maximum ionization in K. If either the
+;     pressure or the density are input, then the CHIANTI advanced
+;     models are run. If neither are specified, then the default
+;     zero-density ion balance file is used (chianti.ioneq).
+;
+;     If the ion balance file is not found, then a value of -1 is
+;     returned.
 ;
 ; CALLS:
-;     READ_IONEQ, CONVERTNAME
+;     READ_IONEQ, CONVERTNAME, CH_CALC_IONEQ
 ;
 ; EXAMPLE:
-;     IDL> tmax=ch_tmax('fe_13')
+;     IDL> tmax=ch_tmax('o_4',pressure=1e15)
+;     IDL> tmax=ch_tmax('o_4',density=1e9)
+;     IDL> tmax=ch_tmax('fe_13',advanced=0)
 ;     IDL> log_tmax=ch_tmax('fe_13',/log)
 ;     IDL> tmax=ch_tmax('fe_13',ioneqname='myioneqfile.ioneq')
 ;
@@ -52,37 +71,90 @@ FUNCTION ch_tmax, ionname, ioneqname=ioneqname, log=log, interp=interp
 ;         used for the dielectronic "d" ions; updated header format.
 ;     Ver.3, 21-Jan-2021, Peter Young
 ;         Added /interp keyword.
+;     Ver.4, 04-Nov-2024, Peter Young
+;         Now uses the advanced models by default for computing Tmax.
 ;-
 
 IF n_params() LT 1 THEN BEGIN
-  print,'Use:  IDL> tmax=ch_tmax( ion_name [, /log, ioneqname=, /interp ] )'
+  print,'Use:  IDL> tmax=ch_tmax( ion_name [, /log, ioneqname=, /interp, '
+  print,'                            advanced_model=advanced_model ] )'
+  print,''
+  print,'  Note: the advanced models are on by default; advanced_model=0 switches them off'
   return,-1.
 ENDIF 
 
-IF n_elements(ioneqname) EQ 0 THEN ioneqname=!ioneq_file
+IF n_elements(advanced_model) EQ 0 THEN adv=1b ELSE adv=advanced_model
 
-IF NOT file_exist(ioneqname) THEN BEGIN
-  print,'%GET_TMAX: the specified ionization balance file does not exist. Returning...'
-  return,-1.
-ENDIF 
-
-read_ioneq,ioneqname,tt,ii,ref
 
 convertname,ionname,iz,ion,diel=diel
 
-ii=reform(ii[*,iz-1,ion-1+diel])
+nd=n_elements(density)
+np=n_elements(pressure)
+
+;
+; If neither pressure or density are specified, then the advanced models
+; are switched off.
+;
+IF nd EQ 0 AND np EQ 0 THEN BEGIN
+  adv=0b
+ENDIF
+
+;
+; Do some checks on the density and pressure inputs.
+;
+IF nd GT 1 THEN BEGIN
+  message,/info,/CONTINUE,'Density must be a scalar. Returning...'
+  return,-1.
+ENDIF 
+IF np GT 1 THEN BEGIN
+  message,/info,/CONTINUE,'Pressure must be a scalar. Returning...'
+  return,-1.
+ENDIF 
+IF np EQ 1 AND nd EQ 1 THEN BEGIN
+  message,/info,/CONTINUE,'Please specify either pressure or density, not both. Returning...'
+  return,-1.
+ENDIF 
+
+IF n_elements(ioneqname) NE 0 THEN BEGIN
+  chck=file_info(ioneqname)
+  IF chck.exists EQ 0 THEN BEGIN 
+    message,/info,/cont,'The specified ionization balance file does not exist. Returning...'
+    return,-1.
+  ENDIF
+ENDIF 
+
+
+
+;
+; Read the ioneq file and extract the ion fractions. Note that the advanced
+; model ioneq file is the default, and the coronal approximation file
+; (!ioneq_file) is only used if advanced_model=0
+;
+IF NOT keyword_set(adv) THEN BEGIN
+  IF n_elements(ioneqname) EQ 0 THEN ioneqname=!ioneq_file
+  read_ioneq,ioneqname,ioneq_t,ioneq_data,ref
+ENDIF ELSE BEGIN
+  ioneq_data=ch_calc_ioneq(temp, dens=density, press=pressure, ele=iz, $
+                           outname=outname, quiet=quiet)
+  ioneq_t=alog10(temp)
+  chck=file_info(outname)
+  IF chck.exists EQ 1 THEN file_delete,outname
+ENDELSE 
+
+
+ii=reform(ioneq_data[*,iz-1,ion-1+diel])
 
 getmax=max(ii,index)
-logtmax=tt[index]
+logtmax=ioneq_t[index]
 
 IF keyword_set(interp) THEN BEGIN
    k=where(ii NE 0.)
    y=alog10(ii[k])
-   x=tt[k]
+   x=ioneq_t[k]
    y2=spl_init(x,y)
   ;
    xi=findgen(41)/100.+logtmax-0.2
-   k=where(xi GE min(tt) AND xi LE max(tt))
+   k=where(xi GE min(ioneq_t) AND xi LE max(ioneq_t))
    xi=xi[k]
   ;
    yi=spl_interp(x,y,y2,xi)
