@@ -1085,14 +1085,15 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
         pp=strsplit(anytim(!stime,/vms),/extract)
         ioneq_name='ch_adv_'+trim(pp[0])+'-'+strmid(pp[1],0,8)+'.ioneq'
         
-        print, '% CH_SYNTHETIC: DEFAULT NAME THAT WILL BE WRITTEN in the working directory IS: '+ioneq_name
-        print, '% CH_SYNTHETIC:  do not move this file as it will be read by other routines later on, when you create a spectrum '
+        print, '% CH_SYNTHETIC: IONEQ FILENAME THAT WILL BE WRITTEN in the working directory is: '+ioneq_name
+        print, '% CH_SYNTHETIC:  This file should be kept if creating a synthetic spectrum that includes the continuum.'
+        print, '% CH_SYNTHETIC:  Otherwise it may be safely moved/deleted once the routine has completed.'
         print, ' '
         
        
      endif else begin
         IF file_exist(ioneq_name) THEN BEGIN 
-           err_msg = '% CH_SYNTHETIC ERROR, ADVANCED ionization model option requested but the ioneq file '+ioneq_name+' already exist, give it  a different name!  -- EXIT'
+           err_msg = '% CH_SYNTHETIC ERROR, ADVANCED ionization model option requested but the output ioneq file '+ioneq_name+' already exists, please give it a different name!  -- EXIT'
            print,err_msg
            return
         END 

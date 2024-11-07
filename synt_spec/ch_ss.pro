@@ -1490,16 +1490,16 @@ PRO syn_MAIN_Event, Event
              'in equilibrium, for a set of elements/ions that are available. For the other ions the previous ',$
              'zero-density approximation is used. To speed up the calculations, the user can choose the required',$
              'temperature range and step in log T.  ',$
-             'The ion abundances are stored in a file for later use within the programs called by ch_ss.',$
+             'The ion fractions are stored in a file for later use within the programs called by ch_ss.',$
              'This file can be used later on as an input. The file is written in the working directory, with the name adv.ioneq,',$
              'but if such file exists, a different file with a time stamp added (in Julian days and fractions) is chosen by default. ',$
              ' ',$
              'The addition of charge transfer (CT) is recommended especially for silicon and oxygen ions. In this ',$
              'case, a selection of atmosphere files can be chosen, or a user-defined supplied. ',$
              ' ',$
-             'The alternative is to choose as in previuous versions a precompiled CHIANTI .ioneq file with the charge states.',$
+             'The alternative is to choose as in previous versions a precompiled CHIANTI .ioneq file with the charge states.',$
              'This file could have been pre-calculated with the advanced model options using ch_ss or the program CH_CALC_IONEQ,',$
-             'but the user should make sure that for consistency the same parameters are used for both the ion abundnaces',$
+             'but the user should make sure that for consistency the same parameters are used for both the ion abundances',$
              'and the calculation of the line emissivities;  as before, three options are available, constant Ne, ',$
              'constant Pe, or a tabulated list (in a file) of Te, Ne ',$
              ' ']

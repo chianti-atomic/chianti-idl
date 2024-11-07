@@ -40,14 +40,10 @@
 ;
 ; OPTIONAL INPUTS:
 ;
-;       ATMOSPHERE: A file with the H,He abundances as a function of temperature.
-;
-;       HE_ABUND:  The total helium abundance relative to hydrogen. 
-;
-;	PRESSURE:  specifies the pressure in units of NeT (cm^-3 K).  G is then
+;   	PRESSURE:  specifies the pressure in units of NeT (cm^-3 K).  G is then
 ;                  calculated at that constant pressure 
 ;		
-;	DENSITY:  specifies the electron density in units of cm^-3.  G is then 
+;	    DENSITY:  specifies the electron density in units of cm^-3.  G is then 
 ;                 calculated at that value of the electron density.  If neither the 
 ;                 density or pressure keywords are specified, a constant
 ;                  density of 1.e+10 cm^-3 is assumed
@@ -65,11 +61,22 @@
 ;       PSFILE:  the (optional) name of the output postscript file 
 ;                  where a plot of the chosen G(T) is saved.
 ;
-;	ABUND_NAME:  Name of the abundance file to use.  If not passed, then
+;	    ABUND_NAME:  Name of the abundance file to use.  If not passed, then
 ;		     the user is prompted for it.
 ;
-;	IONEQ_NAME:  Name of the ionization equilization name to use.  If not
-;		     passed, then the user is prompted for it.
+;	    IONEQ_NAME:  In the advanced models this is the output name for the ionization
+;            equilibrium file. If using advanced_model=0 (ie coronal approximation), it
+;            is the name of the ionization equilibrium file used as an input for the gofnt
+;            calculation. In the latter case, if not passed the user is prompted for it.
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature
+;                   for the charge transfer calculation in the advanced model.
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen for the charge
+;                   transfer calculation in the advanced model.
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   ion balance calculation only
 ;
 ;       LOWER_LEVELS
 ;       UPPER_LEVELS
