@@ -108,7 +108,7 @@ w1=2000
 mini=1.15e6/1e3
 outfile='ch_line_list_v'+ch_ver+'_'+trim(w0)+'_'+trim(w1)+'.tex'
 latex_wvl_dem,w0,w1,outfile=outfile,dem_name=dem_name,abund_name=abund_name,/all, $
-              mini=mini,pressure=press,/lookup, $
+              mini=mini,pressure=press,/lookup, ioneq_name=ioneq_name, $
               advanced_model=0
 
 
