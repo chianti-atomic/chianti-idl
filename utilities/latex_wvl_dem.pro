@@ -92,6 +92,7 @@
 ;       LOOKUP:  If set, then lookup tables are used, greatly speeding up the
 ;                calculation. 
 ;
+;       ADVANCED_MODEL: Set this to zero to switch off the advanced models. 
 ;
 ; CALLS:
 ;       
@@ -127,9 +128,12 @@
 ;       V. 3, 22-May-2002 GDZ.  Removed const_net definitions.
 ;
 ;       Ver.4, 08-Jun-2022, Peter Young
-;         Added abund_name= and ioneq_name= optional inputs.
+;         Added abund_name= optional input.
+;
+;       Ver.5, 02-Dec-2024, Peter Young
+;         Added ioneq_name= optional input and advanced_model keyword.
 ;             
-; VERSION     : Version 4, 08-Jun-2022
+; VERSION     : Version 5, 02-Dec-2024
 ;
 ;-
 
@@ -137,7 +141,8 @@ PRO  latex_wvl_dem,wmin,wmax,pressure=pressure, density=density,$
                    minI=minI,photons=photons,kev=kev,all=all,$
                    sngl_ion=sngl_ion,masterlist=masterlist, $
                    outfile=outfile, noprot=noprot, rphot=rphot, radtemp=radtemp, $
-                   dem_name=dem_name, abund_name=abund_name, lookup=lookup
+                   dem_name=dem_name, abund_name=abund_name, lookup=lookup, $
+                   ioneq_name=ioneq_name, advanced_model=advanced_model
 
 ;
 if n_params(0) lt 2 then begin
@@ -150,6 +155,7 @@ endif
 
 IF n_elements(outfile) EQ 0 THEN outfile ='linelist.tex'
 
+IF n_elements(ioneq_name) EQ 0 THEN ioneq_name=!ioneq_file
 
 IF  keyword_set(pressure)  AND  keyword_set(density)  THEN  begin
    print,' You  have  to decide if you want the intensities calculated '+$
@@ -173,7 +179,8 @@ ch_synthetic, wmin, wmax, output=TRANSITIONS, err_msg=err_msg, $
               verbose=verbose,$
               logt_isothermal=logt_isothermal,  logem_isothermal=logem_isothermal,$
               noprot=noprot, rphot=rphot, radtemp=ratemp, $
-              dem_name=dem_name,lookup=lookup
+              dem_name=dem_name,lookup=lookup, ioneq_name=ioneq_name, $
+              advanced_model=advanced_model
 
 
 IF err_msg NE '' THEN BEGIN 
