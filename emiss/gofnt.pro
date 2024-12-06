@@ -3,23 +3,26 @@
 ; PROJECT:  CHIANTI
 ;
 ;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
-;       Astrophysical Plasmas. It is a collaborative project involving the Naval
-;       Research Laboratory (USA), the University of Florence (Italy), the
-;       University of Cambridge and the Rutherford Appleton Laboratory (UK). 
+;       Astrophysical Plasmas. It is a collaborative project involving the 
+;       University of Cambridge, Goddard Space Flight Center, and University of Michigan. 
 ;
 ;
 ; NAME:
+;
 ;	GOFNT
+;
 ;
 ; PURPOSE:
 ;
 ;	calculate G(n,T) function (line intensity per unit emission measure)
+;
 ;       
 ; PROCEDURE:
 ;
 ;	Must specify line to form numerator and denominator
 ;       Multiple lines can be selected and summed
 ;       This can now be done interactively or not.
+;
 ;
 ; CALLING SEQUENCE: 
 ;
@@ -34,9 +37,90 @@
 ;
 ;       Wmax:  maximum of wavelength wavelength range of interest
 ;
+;
 ; OPTIONAL INPUTS:
 ;
-;       Many - see the keywords below.
+;   	PRESSURE:  specifies the pressure in units of NeT (cm^-3 K).  G is then
+;                  calculated at that constant pressure 
+;		
+;	    DENSITY:  specifies the electron density in units of cm^-3.  G is then 
+;                 calculated at that value of the electron density.  If neither the 
+;                 density or pressure keywords are specified, a constant
+;                  density of 1.e+10 cm^-3 is assumed
+;
+;       RPHOT   Distance from the centre of the star in stellar radius units.
+;               I.e., RPHOT=1 corresponds to the star's surface. (Default is
+;               infinity, i.e., no photoexcitation.)
+;
+;       RADTEMP The blackbody radiation field temperature (default 6000 K).
+;
+;       OUTFILE:  the (optional) name of the output ascii file where a 
+;                   listing of the line ratio intensity as a function of 
+;                   temperature is saved.
+;
+;       PSFILE:  the (optional) name of the output postscript file 
+;                  where a plot of the chosen G(T) is saved.
+;
+;	    ABUND_NAME:  Name of the abundance file to use.  If not passed, then
+;		     the user is prompted for it.
+;
+;	    IONEQ_NAME:  In the advanced models this is the output name for the ionization
+;            equilibrium file. If using advanced_model=0 (ie coronal approximation), it
+;            is the name of the ionization equilibrium file used as an input for the gofnt
+;            calculation. In the latter case, if not passed the user is prompted for it.
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature
+;                   for the charge transfer calculation in the advanced model.
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen for the charge
+;                   transfer calculation in the advanced model.
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   ion balance calculation only
+;
+;       LOWER_LEVELS
+;       UPPER_LEVELS
+;                    Arrays with the indices of the lower and upper levels
+;                    pertaining to the transitions you want to get. 
+;                    If more than one couple is given, the G(T) of the 
+;                    lines are summed.
+;                    Obviously, the given indices must correspond to transitions
+;                    that are present in the database.
+;
+;       LOGT0       An array of log T values for which the G(T) are wanted.
+;
+;       VALUE       The array of G(T) values corresponding to logt0.
+; 
+;                   If logt0 is defined, and within the limits of the 
+;                   temperatures for which G(T) NE 0, the array VALUE
+;                   is returned with a simple spline interpolation.
+;
+;
+; KEYWORD PARAMETERS:
+;
+;       ADVANCED_MODEL: include density-dependent and CT effects.
+;
+;       CT: include charge transfer in advanced models
+;
+;       DR_SUPPRESSION: Switch on DR suppression from Nikolic et al (2018) for all ions 
+;              not included in the advanced models. The comparison with Summers (1974) suppression
+;              has not been checked for other elements when preparing the models.
+;
+;       PHOTONS:  sets output in photons/s
+;
+;       NOABUND: If set, the G(T)'s are not multiplied by the abundance 
+;                factor.
+;
+;       NOPROT   If set, then proton rates are not included.
+;
+;       ALL          If set, all lines are calculated, including
+;                    the 'unobserved' ones. 
+;
+;       ARCSECS  
+;                 If set, units are photons (ergs) cm^+3 s^-1 arcsecs^-2
+;
+;       VERBOSE
+;
 ;
 ; OUTPUTS:
 ;
@@ -65,71 +149,10 @@
 ;       VALUE      The array of G(T) values corresponding to logt0.
 ;
 ;
-; KEYWORD PARAMETERS:
-;
-;
-;	PRESSURE:  specifies the pressure in units of NeT (cm^-3 K).  G is then
-;                  calculated at that constant pressure 
-;		
-;	DENSITY:  specifies the electron density in units of cm^-3.  G is then 
-;                 calculated at that value of the electron density.  If neither the 
-;                 density or pressure keywords are specified, a constant
-;                  density of 1.e+10 cm^-3 is assumed
-;
-;       PHOTONS:  sets output in photons/s
-;
-;       RPHOT   Distance from the centre of the star in stellar radius units.
-;               I.e., RPHOT=1 corresponds to the star's surface. (Default is
-;               infinity, i.e., no photoexcitation.)
-;
-;       RADTEMP The blackbody radiation field temperature (default 6000 K).
-;
-;       OUTFILE:  the (optional) name of the output ascii file where a 
-;                   listing of the line ratio intensity as a function of 
-;                   temperature is saved.
-;
-;       PSFILE:  the (optional) name of the output postscript file 
-;                  where a plot of the chosen G(T) is saved.
-;
-;       NOABUND: If set, the G(T)'s are not multiplied by the abundance 
-;                factor.
-;
-;       NOPROT   If set, then proton rates are not included.
-;
-;
-;	ABUND_NAME:  Name of the abundance file to use.  If not passed, then
-;		     the user is prompted for it.
-;
-;	IONEQ_NAME:  Name of the ionization equilization name to use.  If not
-;		     passed, then the user is prompted for it.
-;
-;       ALL          If set, all lines are calculated, including
-;                    the 'unobserved' ones. 
-;
-;       LOWER_LEVELS
-;       UPPER_LEVELS
-;                    Arrays with the indices of the lower and upper levels
-;                    pertaining to the transitions you want to get. 
-;                    If more than one couple is given, the G(T) of the 
-;                    lines are summed.
-;                    Obviously, the given indices must correspond to transitions
-;                    that are present in the database.
-;
-;       ARCSECS  
-;                 If set, units are photons (ergs) cm^+3 s^-1 arcsecs^-2
-;
-;       VERBOSE
-;
-;       LOGT0       An array of log T values for which the G(T) are wanted.
-;       VALUE       The array of G(T) values corresponding to logt0.
-; 
-;                   If logt0 is defined, and within the limits of the 
-;                   temperatures for which G(T) NE 0, the array VALUE
-;                   is returned with a simple spline interpolation.
-;
 ; CALLS:
 ;
 ;       CH_SYNTHETIC, CH_XMENU_SEL
+;
 ;
 ; COMMON BLOCKS: None
 ;
@@ -146,11 +169,14 @@
 ;
 ;	spectral diagnostics
 ;
+; WRITTEN:
+;         
+; 	Written by Ken Dere
+;	October 4, 1996:     Version 1
+;
 ;
 ; MODIFICATION HISTORY:
 ;
-; 	Written by:	Ken Dere
-;	October 4, 1996:     Version 1
 ;       14-Jul-2000     Peter Young, now calls pop_solver
 ;
 ;       26-Oct-2000 GDZ, added keyword NOABUND to not multiply for the abundence
@@ -220,16 +246,30 @@
 ;             contribution functions that were zero, which caused problems.
 ;             I now ignore these transitions.
 ;
-; VERSION     :   18, 23-Jun-2023
+;       v.19, 24 October 2023, GDZ
+;           Added the advanced model option (the default).
+;           Also, added in the widget the level numbers of the transitions,
+;           so the routine can be used first in interactive mode to see which transitions
+;           are available, then in non-interactive mode by passing the
+;           lower_levels, upper_levels. 
+;
+;       V.20, 3-Jul-2024, GDZ
+;           added DR suppression
+;
+; VERSION     :    v.20
 ;
 ;-
+
 pro gofnt, ions, wmin, wmax, temperature, gof, description,$
            pressure=pressure, density=density, $
            psfile=psfile, outfile=outfile, photons=photons,  $
            noabund=noabund, noprot=noprot, rphot=rphot, radtemp=radtemp, $
            abund_name=abund_name,ioneq_name=ioneq_name, all=all, $
            lower_levels=lower_levels, upper_levels=upper_levels, $
-           arcsecs=arcsecs, VERBOSE=VERBOSE, logt0=logt0, value=value 
+           arcsecs=arcsecs, VERBOSE=VERBOSE, logt0=logt0, value=value,$
+           ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+           atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
+  
 
 on_error, 2
 
@@ -266,7 +306,9 @@ ch_synthetic, wmin, wmax, output=TRANSITIONS,  err_msg=err_msg, $
   ioneq_name=ioneq_name, $
   pressure=pressure, density=density, all=all,sngl_ion=ions, $
   photons=photons, verbose=verbose, /goft, noprot=noprot, $
-  rphot=rphot, radtemp=radtemp
+  rphot=rphot, radtemp=radtemp,$
+           ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+           atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
 
 
 IF err_msg NE '' THEN BEGIN 
@@ -492,7 +534,8 @@ ENDIF  ELSE BEGIN
 
       options[i]=string(i, format='(i4)')+ $
         string(list_wvl(i),format='(f10.4)')+text_add+angstrom+$
-        '  '+string(max(list_int(i,*))/max(list_int),format='(e10.2)')+'  '+ $
+                 '  '+ trim(list_lvl1[i])+'-'+trim(list_lvl2[i])+' '+$ ; GDZ
+      string(max(list_int(i,*))/max(list_int),format='(e10.2)')+'  '+ $
         list_descr(i)
 
       print, options(i)

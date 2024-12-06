@@ -3,7 +3,13 @@
 ;
 ;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
 ;       Astrophysical Plasmas. See www.chiantidatabase.org
-;                   
+;
+;
+;        The recent update of this program was developed as part of CHIANTI-VIP. 
+;        CHIANTI-VIP (Virtual IDL and Python) is  a member of the CHIANTI family
+;        mantained by Giulio Del Zanna, to develop additional features and
+;        provide them to the astrophysics community.
+;
 ; Name        : CHIANTI_DEM
 ;     		          
 ; Purpose     : Calculates the Differential Emission Measure DEM(T) using 
@@ -440,6 +446,25 @@
 ;                       is assumed when using the RADTEMP keyword in the call
 ;                       to pop_solver.
 ;
+;       ADVANCED_MODEL: include density-dependent and CT effects.
+;
+;       CT: include charge transfer in advanced models
+;
+;       IONEQ_LOGT: an array of log T [K] values, defining the grid for the
+;                   calculation
+;
+;       ATMOSPHERE: A file with the H,He abundances as a function of temperature
+;                     for the charge transfer calculation.
+;
+;       HE_ABUND:  The total helium abundance relative to hydrogen. 
+;
+;       NO_AUTO: If set, then the autoionization rates (contained in
+;                the .auto file) are not read. The autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model  introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
+;
+;
 ; Calls       : GET_CONTRIBUTIONS
 ;		ZION2SPECTROSCOPIC
 ;		PRINT2D_PLOT
@@ -516,8 +541,17 @@
 ;             RADFUNC and some output. Changed default n_matches and
 ;             fixed a few minor bugs.
 ;
+;            v.13, 4 Nov 2023, GDZ
+;           Major rewrite, adding the advanced model option (the default),
+;           and also NO_AUTO: If set, then the autoionization states are not
+;           included in the calculations, i.e. a single ion rather than the
+;           two-ion model I introduced in version 9 is calculated. This speeds
+;           up the calculations without affecting the lines from the bound states.
 ;
-; VERSION     :  12, 10-Nov-2020
+;            v.14, 20 Nov 2023 fixed a bug in the peak of the G(T) and changed the
+;            default for the interpolation, 0.02 in log T.
+;
+; VERSION     :  14
 ;-
 
 ;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -535,8 +569,10 @@ pro chianti_dem,output=output,file_input=file_input,pressure=pressure,$
                 min_limits=min_limits, max_limits=max_limits,$
                 do_mcmc=do_mcmc,  do_demreg=do_demreg,$
                 abund_name=abund_name, _extra=_extra,verbose=verbose,$
-                rphot=rphot, radtemp=radtemp, RADFUNC=RADFUNC
-
+                rphot=rphot, radtemp=radtemp, RADFUNC=RADFUNC,ioneq_name=ioneq_name, solv_factor=solv_factor,$
+                no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                atmosphere=atmosphere,he_abund=he_abund
+  
 ;-------------
 
 ;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -747,6 +783,15 @@ IF  keyword_set(verbose) THEN BEGIN
    print,' '
 ENDIF
 
+yes_no,'Do you want to override the uncertainties ? ',yesno
+if yesno then begin
+   rat=0.3
+   read,'Type the (constant) fraction err/obs (e.g. 0.3):',rat
+   if is_number(rat) then obs_sig=obs_int*rat
+   
+end
+
+
 
 ;In case you want to exclude a line from the fit and you typed a 
 ;---------------------------------------------------------------
@@ -771,7 +816,7 @@ if keyword_set(file_gt) then begin
 
 ;start reading the contribution file
 ;-----------------------------------
-   ioneq_name=' '
+   ioneq_name=''
    const_net='' 
    lambda_obs=fltarr(100000)
 
@@ -785,11 +830,23 @@ if keyword_set(file_gt) then begin
       lambda_obs[i]=a
       i=i+1
    endwhile
+   
    free_lun,lucon
    
-   
+; if the first line of the file has the name of the ioneq file, read it:
+   if file_exist(ioneq_name) then $
 ; read the input grid of temperatures:
-   read_ioneq,ioneq_name,ioneq_logt,ioneq,ioneq_ref
+      read_ioneq,ioneq_name,ioneq_logt,ioneq,ioneq_ref else begin
+
+; v.11 new option, read the temperatures:
+      pp=str_sep(ioneq_name,' ',/trim)
+      g=where(pp ne '')
+      pp=pp[g]
+      ioneq_logt= float(pp) 
+
+      ioneq_name=''
+   end
+   
    
    n_dem_temp=n_elements(ioneq_logt)
    
@@ -881,22 +938,21 @@ if keyword_set(file_gt) then begin
       ch_term=strarr(n_ch,n_obs)
 
 
-   endif
+   endif 
 ;---------------------------------------------------------------------------
 ;read the contribution file
 ;-----------------------------------
 
    openr,lucon,file_gt,/get_lun
-
-;readf,lucon,abund_name
-   readf,lucon,ioneq_name                
+pp=''
+   readf,lucon, pp ; ignore - read already               
    readf,lucon,const_net
 
    b0=0.&b1=0.&b2=' '& b3=1 &b4=1 &b5=fltarr(n_dem_temp) &b6=' '
    
    format='(f10.3,1x,f10.3,a15,2i5,1x,'+trim(n_dem_temp)+'e11.3,a40)'
 
-   for iobs=0,n_obs-1 do begin
+    for iobs=0,n_obs-1 do begin
       n_list=ch_n_contr(iobs)
       if n_list ne 0 then begin 
          for ilist=0,n_list-1 do begin
@@ -926,8 +982,10 @@ input={obs_int:obs_int,obs_sig:obs_sig,obs_wvl:obs_wvl,$
 
 
    get_contributions,input, out,output_name=output,  density=density, pressure=pressure,$
-                     cut_contrib=cut_contrib,n_ch=n_ch, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC
-
+                     cut_contrib=cut_contrib,n_ch=n_ch, rphot=rphot, radtemp=radtemp,RADFUNC=RADFUNC,$
+                     ioneq_name=ioneq_name, no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
+                     atmosphere=atmosphere,he_abund=he_abund
+   
 ioneq_name = out.ioneq_name 
 ioneq_logt=out.ioneq_logt
 const_net= out.const_net
@@ -956,7 +1014,7 @@ ch_n_contr= out.ch_n_contr
       out=intarr(n_elements(exclu_obs_wvl_no_teo))
       i=0
       for j=0,n_elements(exclu_obs_wvl_no_teo)-1 do begin
-         out(i)=where( (exclu_obs_wvl_no_teo(j) ne obs_wvl) eq 0)
+         out[i]=where( (exclu_obs_wvl_no_teo(j) ne obs_wvl) eq 0)
          i=i+1
       endfor
 
@@ -967,19 +1025,19 @@ ch_n_contr= out.ch_n_contr
 
       n_obs=n_obs-n_elements(exclu_obs_wvl_no_teo)
 
-      obs_wvl=obs_wvl(in)
-      obs_id=obs_id(in)
-      obs_int=obs_int(in)
-      obs_sig=obs_sig(in)
-      obs_delta_lambda=obs_delta_lambda(in)
+      obs_wvl=obs_wvl[in]
+      obs_id=obs_id[in]
+      obs_int=obs_int[in]
+      obs_sig=obs_sig[in]
+      obs_delta_lambda=obs_delta_lambda[in]
 
-      ch_wvl=ch_wvl(*,in)
-      ch_id=ch_id(*,in)
-      ch_z=ch_z(*,in)
-      ch_ion=ch_ion(*,in)
-      ch_contr_wa=ch_contr_wa(*,*,in)
-      ch_term=ch_term(*,in)
-      ch_n_contr=ch_n_contr(in)
+      ch_wvl=ch_wvl[*,in]
+      ch_id=ch_id[*,in]
+      ch_z=ch_z[*,in]
+      ch_ion=ch_ion[*,in]
+      ch_contr_wa=ch_contr_wa[*,*,in]
+      ch_term=ch_term[*,in]
+      ch_n_contr=ch_n_contr[in]
 
    endif
 endelse
@@ -1178,21 +1236,19 @@ dem_temp=10.^log_dem_temp
    end 
 
    endif else begin 
- print, 'Assuming by default a bin in log T [K] =0.05'
+ print, 'Assuming by default a bin in log T [K] =0.02'
 wait,1
-dt_logT =0.05
+dt_logT =0.02
 end  
 
 
 
 ;  plot out all contribution functions
 ;-------------------------------------
+   if n_elements(plot_gt) eq 0 then $
+      yes_no,'Do you want to plot the single G(T) curves ?',plot_gt
 
 if keyword_set(plot_gt) then begin 
-
-
-;cmax=max(ch_contr)
-;plot_io,fltarr(2),xr=[min_logT,max_logT],yr=[cmax/1.e+3,cmax]
 
    for iobs=0,n_obs-1 do begin
 
@@ -1281,8 +1337,9 @@ endfor
 
 
 ;=== Prepare input Temperatures
-   
-   ntemp = long(((max_logT-min_logT)/dt_logT)+1)
+; GDZ- fixed array definition.
+
+   ntemp = round((max_logT-min_logT)/dt_logT)+1
    logT_interpolated = findgen(ntemp) * dt_logT + min_logT
    
    ch_tot_contr_interpolated=fltarr(ntemp,n_obs)
@@ -1299,12 +1356,15 @@ ch_tot_contr_interpolated=ch_tot_contr_interpolated>0.
 ;get the maximum and the temperature of the maximum of the summed G(T)
 ;----------------------------------------------------------------------
 ch_tot_contr_max=fltarr(n_obs)
-temp_max_tot_contr=fltarr(n_obs)
+logt_max_tot_contr=fltarr(n_obs)
 
+; modified- GDZ Nov 2023
 for iobs=0,n_obs-1 do begin
-   ch_tot_contr_max(iobs)=max(ch_tot_contr(*,iobs))
-   temp_max_tot_contr(iobs)=min_logT+d_dem_temp*$
-                            ( where (ch_tot_contr_max(iobs) eq (ch_tot_contr(*,iobs)) ))
+   ch_tot_contr_max(iobs)=max(ch_tot_contr_interpolated[*,iobs], ind)
+   logt_max_tot_contr[iobs]=logT_interpolated[ind[0]]
+   
+;   logt_max_tot_contr(iobs)=min_logT+d_dem_temp*$
+;                            ( where (ch_tot_contr_max(iobs) eq (ch_tot_contr(*,iobs)) ))
 endfor
 
 
@@ -1333,7 +1393,7 @@ for iobs=0,n_obs-1 do begin
 
    comment=strtrim(string(obs_id(iobs)),2)
    
-   xyouts,temp_max_tot_contr(iobs),$
+   xyouts,logt_max_tot_contr(iobs),$
           ch_tot_contr_max(iobs),$
           comment,chars=1.2  
 endfor
@@ -1576,7 +1636,7 @@ end
 ;                     seems to work well (default = 1e21). Of course,
 ;                     the outputs are un-normalized at the end.
    
-   default, solv_factor, 21
+  if n_elements(solv_factor) eq 0 then solv_factor=21
    
 ;       MAXITER     - [Optional] (float scalar)
 ;                     This program works by iterating a least-squares
@@ -1588,6 +1648,9 @@ end
 
    delvarx, logT_out, dem_out, out_logt, out_logdem, log_dem_out
    
+; Addition: if not defined, set minimum and maximum limits three orders of magnitude
+   if n_elements(min_limits) eq 0 then min_limits= spl_logdem-2
+   if n_elements(max_limits) eq 0 then max_limits= spl_logdem+2
    
    mpfit_dem, obs_int, ch_tot_contr_interpolated, logt_interpolated,$
               obs_err=obs_sig,$              
@@ -1600,6 +1663,10 @@ end
    
    if error eq 1 then begin 
       print,'ERROR in  MPFIT_DEM ! - rerun with different input parameters. '
+
+      stop
+
+      
    goto, this_end_mpfit
    endif 
    
@@ -1654,7 +1721,7 @@ endif
    
 ; save the results:
    save, file=output+'_mpfit_dem.save',/ver,ch_tot_contr_interpolated, logT_interpolated, logT_out,log_dem_out,$
-         obs_int,obs_id, obs_wvl, exp_int,t_eff,temp_max_tot_contr, /compress
+         obs_int,obs_id, obs_wvl, exp_int,t_eff,logt_max_tot_contr, /compress
    
    print, '    wvl     Iobs   log Teff Icalc/Iobs   ID  '
 
@@ -1694,7 +1761,7 @@ if n_elements(pp) eq 2 then $
 
    text2= ion_string+' & '+string(obs_wvl(sort_t[iobs]), format='(f7.2)')+' & '+$        
            this_int_s+' & '+$
-           string(temp_max_tot_contr[sort_t[iobs]] , format='(f5.2)')+' & '+$
+           string(logt_max_tot_contr[sort_t[iobs]] , format='(f5.2)')+' & '+$
            string(alog10(t_eff(sort_t[iobs])), format='(f5.2)')+' & '+$           
            string(ratio, format='(f5.2)')+' &  &  & \\'
 
@@ -1761,9 +1828,9 @@ close,2
    
 
    for iobs=0,n_obs-1 do begin        
-      point=spline(logT_out, log_dem_out, temp_max_tot_contr[iobs])
-      oplot, [temp_max_tot_contr[iobs]], [alog10(obs_int[iobs]/exp_int[iobs]* 10.^point)], psym=6
-      xyouts, temp_max_tot_contr[iobs], alog10(obs_int[iobs]/exp_int[iobs]*$
+      point=spline(logT_out, log_dem_out, logt_max_tot_contr[iobs])
+      oplot, [logt_max_tot_contr[iobs]], [alog10(obs_int[iobs]/exp_int[iobs]* 10.^point)], psym=6
+      xyouts, logt_max_tot_contr[iobs], alog10(obs_int[iobs]/exp_int[iobs]*$
                                                10.^point), $
               ' '+strtrim(obs_id[iobs],2), charsize=0.8, Orientation=90
    endfor
@@ -2019,7 +2086,7 @@ close,2
       endfor
       
       save, file=output+'_xrt_dem.save',/ver, logT_out, log_dem_mciter,$
-            obs_int, obs_sig, obs_id, obs_wvl, exp_int,t_eff,temp_max_tot_contr,/compress
+            obs_int, obs_sig, obs_id, obs_wvl, exp_int,t_eff,logt_max_tot_contr,/compress
       
       window,3
       pr=''      
@@ -2030,7 +2097,7 @@ close,2
             xr=[x_min,x_max],yr=[y_min,y_max],$
             xstyle=1,xtitle = ' log T [ !eo!nK ]',$
             ytitle ='log DEM [ cm!S!E-5 !NK!S!E-1!N ] ',ystyle=1,$
-            title='XRT DEM INVERSION TECHNIQUE'
+            title='CHIANTI MPFIT DEM INVERSION'
 
 ; over plot the other solutions:
       for ii=1, MC_iter-1 do oplot, logT_out, log_dem_mciter[*,ii], th=th, col=100, psym=10
@@ -2214,7 +2281,7 @@ if keyword_set(do_mcmc) then begin
 ; save the above quantities for later on:
       
       save, file=output+'_mcmc2.save', $
-            logt_interpolated, dem_out, obs_int,obs_id, obs_wvl, exp_int,t_eff,temp_max_tot_contr
+            logt_interpolated, dem_out, obs_int,obs_id, obs_wvl, exp_int,t_eff,logt_max_tot_contr
       
       
       print, '    wvl    Iobs   log Teff Iobs/Icalc   ID  '

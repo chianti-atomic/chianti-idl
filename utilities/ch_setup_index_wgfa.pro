@@ -1,24 +1,47 @@
-
-FUNCTION ch_setup_index_wgfa, wgfastr, wvlmin=wvlmin, wvlmax=wvlmax, levmax=levmax, $
-                              count=count, obs_only=obs_only
-
 ;+
+;
+; PROJECT:  CHIANTI
+;
+;       CHIANTI is an Atomic Database Package for Spectroscopic Diagnostics of
+;       Astrophysical Plasmas. It is a collaborative project involving the
+;       University of Cambridge, Goddard Space Flight Center, and University of Michigan.
+;
+;
 ; NAME:
+;
 ;     CH_SETUP_INDEX_WGFA
 ;
+;
 ; PURPOSE:
+;
 ;     Derive the index_wgfa array that is used by ch_synthetic.
 ;
+;
 ; CATEGORY:
+;
 ;     CHIANTI.
 ;
+;
 ; CALLING SEQUENCE:
+;
 ;     Result = CH_SETUP_INDEX_WGFA( Wgfastr )
 ;
+;
 ; INPUTS:
+;
 ;     Wgfastr:  The structure returned by read_wgfa_str.pro.
 ;
+;
+; KEYWORD PARAMETERS:
+;
+;     OBS_ONLY: If a wavelength check is performed (WVLMIN and/or
+;               WVLMAX), then the default is to consider observed
+;               and theoretical wavelengths. With /OBS_ONLY, only
+;               the observed wavelengths are considered.
+;
+;
 ; OPTIONAL INPUTS:
+;
 ;     Wvlmin:  A wavelength in angstroms. If set, then the routine
 ;	       checks if the ion has any wavelengths above
 ;	       WVLMIN. If not, then the routine exits, and an empty
@@ -29,14 +52,10 @@ FUNCTION ch_setup_index_wgfa, wgfastr, wvlmin=wvlmin, wvlmax=wvlmax, levmax=levm
 ;	       output is returned.
 ;     Levmax:  An integer specifying the highest atomic level to
 ;              include in the output.
-;	
-; KEYWORD PARAMETERS:
-;     OBS_ONLY: If a wavelength check is performed (WVLMIN and/or
-;               WVLMAX), then the default is to consider observed
-;               and theoretical wavelengths. With /OBS_ONLY, only
-;               the observed wavelengths are considered.
+;
 ;
 ; OUTPUTS:
+;
 ;     An index of the WGFA structure that picks out those transitions
 ;     that satisfy the WVLMIN and/or WVLMAX conditions, the A_VALUE NE 0
 ;     condition, and the LEVMAX condition. This index is used by the
@@ -44,18 +63,42 @@ FUNCTION ch_setup_index_wgfa, wgfastr, wvlmin=wvlmin, wvlmax=wvlmax, levmax=levm
 ;
 ;     If no entries are found, then -1 is returned.
 ;
+;
 ; OPTIONAL OUTPUTS:
+;
 ;     Count:  The number of entries in the output index.
 ;
+;
 ; EXAMPLE:
+;
 ;     IDL> ion2filename,'o_6',fname
 ;     IDL> read_wgfa_str,fname+'.wgfa',wgfa
 ;     IDL> ind=ch_setup_index_wgfa(wgfa,wvlmin=1030,wvlmax=1040)
 ;     IDL> ind=ch_setup_index_wgfa(wgfa,levmax=3,count=count)
 ;
-; MODIFICATION HISTORY:
+;
+; PREVIOUS HISTORY:
+;
+;     NONE
+;
+;
+; WRITTEN:
+;
 ;     Ver.1, 12-May-2023, Peter Young
+;
+;
+; MODIFICATION HISTORY:
+;
+;     v.2,   13-Oct-2023,   Giulio Del Zanna (GDZ), fixed the problem when a levmax is given
+;            as input but is higher than the maximum number in the file..
+;
+;
+; VERSION:   2
+;
 ;-
+
+FUNCTION ch_setup_index_wgfa, wgfastr, wvlmin=wvlmin, wvlmax=wvlmax, levmax=levmax, $
+                              count=count, obs_only=obs_only
 
 
 IF n_params() LT 1 THEN BEGIN
@@ -64,7 +107,7 @@ IF n_params() LT 1 THEN BEGIN
   return,-1
 ENDIF 
 
-IF n_elements(levmax) EQ 0 THEN levmax=max(wgfastr.lvl2)
+IF n_elements(levmax) EQ 0 THEN levmax=max(wgfastr.lvl2) else levmax=max(wgfastr.lvl2) < levmax ; GDZ
 
 IF keyword_set(obs_only) THEN wvlchck=wgfastr.wvl ELSE wvlchck=abs(wgfastr.wvl)
 

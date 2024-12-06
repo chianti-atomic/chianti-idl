@@ -18,7 +18,7 @@
 ; Outputs     : none
 ;
 ; Calls:
-;             read_masterlist, read_scups, wrt_fits_bin_exten
+;             ch_read_list_ions, read_scups, wrt_fits_bin_exten
 ;
 ; 
 ; Written     : 
@@ -27,8 +27,11 @@
 ; Modified    :
 ;       Ver.2, 09-Mar-2021, Peter Young
 ;         The output file is now gzipped.
+;       Ver.3, 15-Oct-2024, Peter Young
+;         Now uses ch_read_list_ions and reads both the general ion
+;         list and the advanced model ion lin.
 ;
-; VERSION     :    V.2, 09-Mar-2021
+; VERSION     :    V.3, 15-Oct-2024
 ;
 ;-        
 ;---------------------------
@@ -43,7 +46,15 @@ pro ch_all_scups2fits, dir=dir
   end
   
 
-  read_masterlist,'',list
+ ;
+ ; Combine the standard and advanced masterlists.
+ ;
+  mlist1=ch_read_list_ions()
+  mlist2=ch_read_list_ions(/advanced)
+ ;
+  list=[mlist1.list_ions,mlist2.list_ions]
+  list=list[uniq(list,sort(list))]
+;  read_masterlist,'',list
 
   nlist=n_elements(list)
 

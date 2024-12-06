@@ -64,6 +64,8 @@ function ch_plot_iso_ups, ionname, upper_level, neutrals=neutrals, quiet=quiet, 
 ;
 ; MODIFICATION HISTORY:
 ;       Ver.1, 11-Apr-2023, Peter Young
+;       Ver.2, 15-Oct-2024, Peter Young
+;        Now uses ch_read_list_ions instead of read_masterlist.
 ;-
 
 
@@ -105,9 +107,11 @@ lower_levels=str.data[i_meta].index
 
 nlev=n_elements(lower_levels)
 
-mlistname=concat_dir(!xuvtop,'masterlist')
-mlistname=concat_dir(mlistname,'masterlist.ions')
-read_masterlist,mlistname,mlist
+;mlistname=concat_dir(!xuvtop,'masterlist')
+;mlistname=concat_dir(mlistname,'masterlist.ions')
+;read_masterlist,mlistname,mlist
+list=ch_read_list_ions()
+mlist=list.list_ions
 
 
 ;

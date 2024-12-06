@@ -44,6 +44,8 @@ PRO ch_lookup_all_ions,ldens_start=ldens_start,ldens_end=ldens_end, execute=exec
 ;
 ; MODIFICATION HISTORY:
 ;     Ver.1, 26-Jul-2019, Peter Young
+;     Ver.2, 15-Oct-2024, Peter Young
+;       Now uses ch_read_list_ions to read the masterlist.
 ;-
 
 outdir=getenv('CHIANTI_LOOKUP')
@@ -53,9 +55,12 @@ IF outdir EQ '' THEN BEGIN
   return
 ENDIF 
 
-mlistdir=concat_dir(!xuvtop,'masterlist')
-mlistfile=concat_dir(mlistdir,'masterlist.ions')
-read_masterlist,mlistfile,mlist
+;
+; Get masterlist.
+;
+list=ch_read_list_ions()
+mlist=list.list_ions
+
 
 IF n_elements(ldens_start) EQ 0 THEN ldens_start=7.0
 IF n_elements(ldens_end) EQ 0 THEN ldens_end=13.0

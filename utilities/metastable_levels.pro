@@ -1,7 +1,6 @@
 
 PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
-                       quiet=quiet, density=density, wgfastr=wgfastr, $
-                       elvlcstr=elvlcstr
+                       quiet=quiet, density=density
 
 ;+
 ; NAME:
@@ -33,6 +32,9 @@ PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
 ;              CHIANTI distribution for the .wgfa file. Setting PATH
 ;              allows you to directly specify a directory containing
 ;              the .wgfa file.
+;    Density:  Density (cm^-3) for which the metastable calculation is
+;              performed. If an array is specified, then the maximum
+;              density in the array is used.
 ;	
 ; KEYWORD PARAMETERS:
 ;    QUIET:    If set, then no information is printed to the screen.
@@ -44,7 +46,7 @@ PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
 ;              value 1.
 ;
 ; CALLS:
-;    READ_WGFA_STR, READ_ELVLC, CONVERTNAME, ZION2FILENAME
+;    READ_WGFA_STR, READ_ELVLC, CONVERTNAME, ZION2FILENAME, CH_TMAX
 ;
 ; EXAMPLE:
 ;    IDL> metastable_levels, 'fe_13', meta
@@ -63,6 +65,8 @@ PRO metastable_levels, ionname, meta, cutoff=cutoff, path=path, $
 ;    Ver.5, 06-Nov-2023, Peter Young
 ;      Major revision to routine so that it more accurately works
 ;      out potential metastables using the coronal approximation.
+;    Ver.6, 04-Nov-2024, Peter Young
+;      Modified call to ch_tmax for CHIANTI 11; updated header.
 ;-
 
 
@@ -123,8 +127,12 @@ read_elvlc,elvlcname,l1,term,conf,ss,ll,jj,ecm,eryd,ecmth,erydth,ref,elvlc=elvlc
 e_ev=elvlcstr.data.energy/8065.54
 wgt=elvlcstr.data.weight
 
-kt=ch_tmax(ionname)*8.617e-5
-
+;
+; The electron excitation rates are temperature sensitive, so need to
+; specify a temperature. Using Tmax calculated from zero-density ion
+; balance.
+;
+kt=ch_tmax(ionname,advanced_model=0,/quiet)*8.617e-5
 exp_de_kt=exp(-e_ev/kt)
 kt_sqrt=sqrt(13.606/kt)
 

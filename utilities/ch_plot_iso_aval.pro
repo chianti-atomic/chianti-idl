@@ -54,6 +54,8 @@ function ch_plot_iso_aval, ionname, upper_level, neutrals=neutrals, quiet=quiet,
 ;       Ver.1, 07-Apr-2023, Peter Young
 ;       Ver.2, 10-Apr-2023, Peter Young
 ;        Fixed bugs related to NaNs and level IDs.
+;       Ver.3, 15-Oct-2024, Peter Young
+;        Now uses ch_read_list_ions instead of read_masterlist.
 ;-
 
 
@@ -100,9 +102,11 @@ nlev=n_elements(lower_levels)
 ;
 ; Read CHIANTI masterlist.
 ;
-mlistname=concat_dir(!xuvtop,'masterlist')
-mlistname=concat_dir(mlistname,'masterlist.ions')
-read_masterlist,mlistname,mlist
+;mlistname=concat_dir(!xuvtop,'masterlist')
+;mlistname=concat_dir(mlistname,'masterlist.ions')
+;read_masterlist,mlistname,mlist
+list=ch_read_list_ions()
+mlist=list.list_ions
 
 
 ;
