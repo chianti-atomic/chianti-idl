@@ -22,7 +22,7 @@ FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rr
 ;      Rates1: The structure returned by CH_LOAD_ION_RATES for the
 ;              reference ion  (charge=z).
 ;      Rates2: The structure returned by CH_LOAD_ION_RATES for the
-;              ionized ion  (charge=z-1).
+;              ionized ion  (charge=z+1).
 ;
 ; KEYWORD PARAMETERS:
 ;      NO_RREC:  If set, then level-resolved radiative recombination
@@ -38,6 +38,7 @@ FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rr
 ;                    photoexcitation rates.
 ;         ppr:       3D array containing proton rate coefficients.
 ;         qq:        3D array containing electron rate coefficients.
+;         ioniz:     3D array containing ionization rates.
 ;         rr:        3D array containing radiative recombination
 ;                    rates.
 ;         ai:        2D array containing autoionization rates.
