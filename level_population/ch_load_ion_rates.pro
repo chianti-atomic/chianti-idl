@@ -124,8 +124,10 @@ function ch_load_ion_rates, input, temp, n_lev=n_lev, $
 ;        v.11, 12-May-2023, Peter Young
 ;          Added /quiet for call to proton_dens; message about flipping
 ;          transitions only printed if /verbose set.
+;        v.12, 12-Feb-2025, Peter Young
+;          Added a comment about the "mult" paramter. No change to code.
 ;
-; VERSION     : 11
+; VERSION     : 12
 ;
 ;-
 
@@ -272,7 +274,9 @@ endif
 
   IF keyword_set(verbose) THEN print,'% CH_LOAD_ION_RATES: the '+gname+' energy file has '+trim(n_elvl)+' levels'
 
-; Multiplicity:
+  ; Multiplicity:
+  ; PRY, 12-Feb-2025: the variable "mult" has been wrongly named as it 
+  ; is not the multiplicity, but the weight.
   mult=2.*jj+1.
 ;
   hck=1.98648d-16/1.38062d-16

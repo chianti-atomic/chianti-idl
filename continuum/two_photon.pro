@@ -272,6 +272,10 @@
 ;       Ver.26, 07-Dec-2023, Peter Young
 ;            For conversion to keV, I changed indgen to lindgen due to
 ;            errors if there are too many wavelength bins.
+;
+;       Ver.27, 07-Feb-2025, Peter Young
+;            Now catches error in the case the two photon transition
+;            doesn't exist.
 ;-
 
 pro two_photon,temperature,wvl,rad, no_setup=no_setup, $
@@ -582,6 +586,12 @@ for ilist=0,nlist-1 do begin
                two_photon=input.two_photon
             ENDIF
 
+            ;
+            ; In case the two_photon transition doesn't exist (this shouldn't
+            ; happen).
+            ;
+            IF n_tags(two_photon) EQ 0 THEN continue
+            
             pop_idx=two_photon.lvl-1
 
             wvl0=1.d+8/(ecm(pop_idx)-ecm(0))
