@@ -64,6 +64,9 @@ pro ff_rad_loss,t,rad_loss,no_setup=no_setup,min_abund=min_abund, $
 ;     Ver.4, 30-Apr-2019, Peter Young
 ;           modified to call ff_gaunt_sutherland to get the Gaunt
 ;           factor rather than compute it internally.
+;     Ver.5, 14-Apr-2025, Peter Young
+;           fixed bug whereby Gaunt factor was wrongly specified (now using
+;           gaunt_z)
 ;-
 
 
@@ -154,10 +157,14 @@ FOR iz=1,zmax DO BEGIN
   this_abund=abund[iz-1]
   IF this_abund GT min_abund THEN BEGIN
     FOR ion=2,iz+1 DO BEGIN
-      z=float(ion-1)
+      z=float(ion-1)   ; charge on ion
       this_ioneq=reform(ioneq[*,iz-1,ion-1])
-      k=where(gaunt[*,ion-2] NE -1)
-      rad_loss[k]=rad_loss[k]+this_abund*this_ioneq[k]*factor*sqrt(t[k])*z^2*gaunt[k]
+      ;
+      ; Gaunt factor as function of temperature for the specified charge:
+      gaunt_z=reform(gaunt[*,ion-2])
+      ;
+      k=where(gaunt_z NE -1)
+      rad_loss[k]=rad_loss[k]+this_abund*this_ioneq[k]*factor*sqrt(t[k])*z^2*gaunt_z[k]
     ENDFOR 
   ENDIF
 ENDFOR 
