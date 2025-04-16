@@ -544,6 +544,9 @@
 ;          Major rewrite for version 11.
 ;       v.26 19 July 2024 GDZ, fixed the bug when calculating the isothermal option.
 ;       v.27, 23 Sept 2024 GDZ, fixed a bug: the CT option was not passed on.
+;       v.28, 16-Apr-2025, Peter Young
+;          If the lookup tables are enabled, then the photoexcitation options are
+;          now disabled (since the two are not compatible).
 ;
 ;
 ; TO DO LIST:
@@ -551,7 +554,7 @@
 ;           kev
 ;           Allow plots in intensities instead of intensities A-1
 ;
-; VERSION     :  V.27
+; VERSION     :  V.28
 ;
 ;-
 PRO restore_spectrum
@@ -1819,7 +1822,17 @@ PRO syn_MAIN_Event, Event
      END
 
      event.id EQ state.lookup_ev: BEGIN
-        widget_control,state.lookup_ev,set_value=event.value
+       widget_control,state.lookup_ev,set_value=event.value
+       IF event.value EQ 1 THEN BEGIN
+         IF photoexcitation THEN BEGIN 
+           widget_control,state.photoexcitation_info, set_val='PE: NO'
+           photoexcitation = 0
+           WIDGET_CONTROL,state.photoexcitation_base, map=0
+         ENDIF 
+         widget_control,state.pexc_base,sens=0
+       ENDIF ELSE BEGIN
+         widget_control,state.pexc_base,sens=1
+       ENDELSE 
      END
 ;-----------------------------------------------------------------------
      
@@ -4341,13 +4354,13 @@ dem_show=WIDGET_TEXT(dem_base, value='', xsiz=8)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-dummy_base = widget_base(lin_base, /column, /frame, map=1)
+pexc_base = widget_base(lin_base, /column, /frame, map=1)
 
 ;photoexcitation
-pe_help_button = WIDGET_BUTTON(dummy_base,val='PE? - HELP')
+pe_help_button = WIDGET_BUTTON(pexc_base,val='PE? - HELP')
 
 
-photoexcitation_info = widget_button(dummy_base,value='PE: NO',$
+photoexcitation_info = widget_button(pexc_base,value='PE: NO',$
                                      frame=2)
 ;define the default:
 
@@ -4355,7 +4368,7 @@ photoexcitation = 0
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-photoexcitation_base=widget_base(dummy_base, row=2 , map=0)
+photoexcitation_base=widget_base(pexc_base, row=2 , map=0)
 
 dummy_base =  widget_label(photoexcitation_base, value='R/Ro:')
 photoexcitation_rphot_ev = WIDGET_TEXT(photoexcitation_base,/edit, $
@@ -4724,6 +4737,7 @@ temp_base:temp_base, temp_butt:temp_butt, $
   isothermal_base1:isothermal_base1, $
        iso_logt_ev:iso_logt_ev, iso_logem_ev:iso_logem_ev, $
        pe_help_button:pe_help_button,$
+       pexc_base: pexc_base, $
   photoexcitation_base:photoexcitation_base, $
   photoexcitation_rphot_ev:photoexcitation_rphot_ev, $
   photoexcitation_radtemp_ev:photoexcitation_radtemp_ev, $
