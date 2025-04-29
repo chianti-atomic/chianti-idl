@@ -14,7 +14,7 @@
 ;
 ; NAME:
 ;	
-;       CH_ADV_MODEL_SETUP 
+;       CH_ADV_MODEL_SETUP_GSK
 ;
 ;
 ; PURPOSE:
@@ -33,12 +33,15 @@
 ;       ion fractions. If He fractions are not provided, it obtains these from the default
 ;       CHIANTI ion fraction file. If He abundance is not provided relative to H, it obtains
 ;       this from the default abundance file.
-;
+;  
 ;       The routine then interpolates the parameters over the temperature grid inputted, which
 ;       is the grid used for the ion balance calculation. Because the interpolation is over
 ;       temperature the model atmosphere parameters will be truncated below and above the
 ;       temperature minimum and maximum in the file.
 ;
+;       Alternately, if ATMOS_PARAMS is provided, then user provided values of the neutral/ion
+;       fractions are used instead of trying to read an atmosphere_file. This is mostly intended
+;       as part of the process of building large lookup tables.
 ;
 ; CATEGORY
 ;
@@ -71,6 +74,26 @@
 ;
 ;       HE_ABUND:  Floating point number for the He abundance relative to hydrogen
 ;
+;       ATMOS_PARAMS: This is a structure containing the atmospheric parameters, and is
+;                     an alternative to giving ATMOSPHERE_FILE. The tags are:
+;
+;                     .h_elec  ratio of hydrogen to electron number density (required)
+;                     .h1_frac neutral hydrogen fraction (required)
+;                     .he1_frac neutral helium fraction
+;                     .he2_frac singly ionised helium fraction
+;                     .temp    the temperatures (K) at which the above parameters are
+;                              defined.
+;
+;                     The helium data are optional (helium ion fractions will be
+;                     calculated from !ioneq_file if they are not specified). If the tags
+;                     elec_dens, pressure and height are present, then they will be added
+;                     to the output structure, but they are not essential for
+;                     incorporating charge transfer.
+;
+;                     Special case: if h_elec and h1_frac are scalars, then they are
+;                     applied to all of the input temperatures TEMP. This is specifically
+;                     for creating lookup tables for a range of hydrogen (and helium)
+;                     parameters. In this case the temp tag in atmos_params is ignored.
 ;
 ; OUTPUTS:
 ;
@@ -121,13 +144,18 @@
 ;
 ;       v.8, 29 Aug 2024,  RPD, no longer read and return the recombination fitting coefficients
 ;
-; VERSION:  8
+;       v.9, 24 Apr 2025,  Graham Kerr & Peter Young
+;                          added atmos_params functionality, providing required values    
+;                          directly without needing to read an atmosphere (intended for 
+;                          use in producing large lookup tables). The routine now calls
+;                          ch_read_atmos and ch_interp_atmos
+;
+; VERSION:  9
 ;
 ;- 
 
-function ch_adv_model_setup,temp,ct=ct,atmosphere_file=atmosphere_file,he_abund=he_abund
-
-
+function ch_adv_model_setup,temp,ct=ct,atmosphere_file=atmosphere_file,he_abund=he_abund, $
+                                atmos_params=atmos_params
 
 zlabl=['H','He','Li','Be','B','C','N','O','F','Ne','Na',$
        'Mg','Al','Si','P','S','Cl','Ar','K','Ca','Sc','Ti','V','Cr', $
@@ -146,93 +174,131 @@ info=ch_read_list_ions(ion_list)
 model_ions=info.list_ions
 ions_nlevels=info.nlevels
 
+ntemp=n_elements(temp)
 
-; retrieve model atmosphere data for charge transfer calculation
-if keyword_set(ct) then begin
+;
+; Check atmos_params. If the tags only have one element (swtch=1), then the H and He
+; data apply to all of the temperatures TEMP. Otherwise (swtch=0), the H and He data
+; are interpolated onto TEMP values.
+;
+swtch=0b
+ntags=n_tags(atmos_params)
+IF keyword_set(ct) AND ntags NE 0 THEN BEGIN
+  IF n_elements(atmos_params.h_elec) NE n_elements(atmos_params.h1_frac) THEN BEGIN
+    message,/info,/cont,'The h_elec and h1_frac tags of atmos_params must have the same number of elements. Returning...'
+    return,-1
+  ENDIF
+  ;
+  IF n_elements(atmos_params.h_elec) EQ 1 THEN swtch=1b
+ENDIF 
 
-  atmos_data=strarr(file_lines(atmosphere_file))
-  openr,lf,atmosphere_file,/get_lun
-  readf,lf,atmos_data
-  free_lun,lf
-  
-  comment_ind=where(atmos_data.startswith('-1'),nc)
-  if nc gt 0 then nrecs=comment_ind[0] else nrecs=n_elements(atmos_data)
-  
-  rdfloat,atmosphere_file,atmos_temp,atmos_elec,atmos_height,$
-    atmos_pressure,atmos_hyd,atmos_h1,atmos_he1,atmos_he2,numline=nrecs,/double
-
-  ; all atmospheric parameters below the temperature minimum and above the temperature maximum
-  ; have to be removed for temperature interpolation in ionization equilibrium
-  atmos_min=min(atmos_temp,atmin)
-  atmos_max=max(atmos_temp,atmax)
-  if atmin ne 0 or atmax ne nrecs-1 then begin
-    print,'Double-valued temperature array found in atmosphere file,'
-    print,'parameters below temperature minimum and above temperature maximum will be removed'
-    atmos_temp=atmos_temp[atmin:atmax]
-    atmos_elec=atmos_elec[atmin:atmax]
-    atmos_height=atmos_height[atmin:atmax]
-    atmos_pressure=atmos_pressure[atmin:atmax]
-    atmos_hyd=atmos_hyd[atmin:atmax]
-    atmos_h1=atmos_h1[atmin:atmax]
-    if n_elements(atmos_he2) gt 0 then begin
-      atmos_he1=atmos_he1[atmin:atmax]
-      atmos_he2=atmos_he2[atmin:atmax]
-    endif
-  endif
-  
-  log_temp=alog10(temp)
-  ntemp=n_elements(temp)
-  atmos_logt=alog10(atmos_temp)
-    
-  model_height=10.0d0^interpol(alog10(atmos_height),atmos_logt,log_temp)
-  total_elec=10.0d0^interpol(alog10(atmos_elec),atmos_logt,log_temp)
-  total_pressure=10.0d0^interpol(alog10(atmos_pressure),atmos_logt,log_temp)
-  total_hyd=10.0d0^interpol(alog10(atmos_hyd),atmos_logt,log_temp)
-  h1_frac=10.0d0^interpol(alog10(atmos_h1),atmos_logt,log_temp)
-
-  if n_elements(atmos_he2) gt 0 then begin
-    he1_frac=10.0d0^interpol(alog10(atmos_he1),atmos_logt,log_temp)
-    he2_frac=10.0d0^interpol(alog10(atmos_he2),atmos_logt,log_temp)
-    helim=where(log_temp lt atmos_logt[0] and log_temp gt atmos_logt[-1],natmhe)
-  endif else begin
-    read_ioneq,!ioneq_file,ioneqt,he_fracs,ref,element=2
-    he1_frac=10.0d0^interpol(alog10(double(he_fracs[*,1,0])),ioneqt,log_temp)
-    he2_frac=10.0d0^interpol(alog10(double(he_fracs[*,1,1])),ioneqt,log_temp)
-    helim=where(log_temp lt ioneqt[0] or log_temp gt ioneqt[-1],natmhe)
-    print,'He ion fractions have not been specified - using default file '+!ioneq_file
-  endelse
-
-  h_elec=total_hyd/total_elec
-  h2_frac=1.0d0-h1_frac
-  he3_frac=1.0d0-he1_frac-he2_frac
-
-  ; set atmosphere parameters for CT to zero if requested temperature range lies outside
-  ; range of model atmosphere file
-  ctlim=where(log_temp lt atmos_logt[0] or log_temp gt atmos_logt[-1],natm)
-  if natm gt 0 then begin
-    print, 'Model atmosphere does not cover requested temperature range. Charge transfer rates will be set to zero outside model atmosphere limits'
-    model_height[ctlim]=0.0d0 & total_elec[ctlim]=0.0d0 & total_pressure[ctlim]=0.0d0 & total_hyd[ctlim]=0.0d0
-    h_elec[ctlim]=0.0d0 & h1_frac[ctlim]=0.0d0 & h2_frac[ctlim]=0.0d0
-  endif
-
-  if natmhe gt 0 then begin
-    he1_frac[helim]=0.0d0 & he2_frac[helim]=0.0d0 & he3_frac[helim]=0.0d0
-  endif
-  he_err=where(he3_frac lt 0.0,nhe)
-  if nhe gt 0 then he3_frac[he_err]=0.0d0
-  ; test both h fracs and he fracs for values greater than 1
-
-  if n_elements(he_abund) eq 0 then begin
-    read_abund,!abund_file,abund_arr,ref,element=2
-    he_abund=abund_arr[1]
-    print,'He adundance has not been set - using default file '+!abund_file
-  endif
-  
-  ct_model={h_elec:h_elec,h1_frac:h1_frac,h2_frac:h2_frac,he1_frac:he1_frac,$
-    he2_frac:he2_frac,he3_frac:he3_frac,he_abund:he_abund,model_height:model_height,$
-    total_elec:total_elec,total_pressure:total_pressure}
-
+;
+; If the He abundance is not specified, then use the default CHIANTI
+; abundance file.
+if n_elements(he_abund) eq 0 then begin
+  read_abund,!abund_file,abund_arr,ref,element=2
+  he_abund=abund_arr[1]
+  message,/info,/cont,'He adundance has not been set - using default file '+!abund_file
 endif
+
+IF keyword_set(ct) AND swtch EQ 0 THEN BEGIN
+  ;
+  IF n_tags(atmos_params) EQ 0 THEN BEGIN
+    ;
+    ; If atmosphere_file does not exist, the user will be prompted to select
+    ; a file from the CHIANTI options.
+    atmos_params=ch_read_atmos(atmosphere_file)
+    IF n_tags(atmos_params) EQ 0 THEN return,-1.
+  ENDIF 
+
+  IF NOT tag_exist(atmos_params,'temp') THEN BEGIN
+    message,/info,/cont,'The tag TEMP (temperature) does not exist for atmos_params. Returning...'
+    return,-1
+  ENDIF ELSE BEGIN 
+    atmos_temp=atmos_params.temp
+  ENDELSE 
+
+  ;
+  ; Note the use of index_good below. It prevents h2_frac (and he3_frac) from having
+  ; non-zero values outside of the atmos parameter temperature range.
+  ;
+  h_elec=ch_interp_atmos(atmos_params.h_elec,atmos_temp,temp)
+  h1_frac=ch_interp_atmos(atmos_params.h1_frac,atmos_temp,temp,index_good=index_good)
+  h2_frac=dblarr(n_elements(temp))
+  h2_frac[index_good]=1.0d0-h1_frac[index_good]
+
+  IF tag_exist(atmos_params,'he1_frac') AND tag_exist(atmos_params,'he2_frac') THEN BEGIN
+    he1_frac=ch_interp_atmos(atmos_params.he1_frac,atmos_temp,temp)
+    he2_frac=ch_interp_atmos(atmos_params.he2_frac,atmos_temp,temp,index_good=index_good)
+    he3_frac=dblarr(n_elements(temp))
+    he3_frac[index_good]=1.0d0-he1_frac[index_good]-he2_frac[index_good]
+  ENDIF ELSE BEGIN
+    print,'He ion fractions have not been specified - using default file '+!ioneq_file
+    read_ioneq,!ioneq_file,ioneqt,he_fracs,ref,element=2
+    ;
+    ; Limit ioneq temperature to the range of the atmosphere model.
+    k=where(10.^ioneqt GE min(atmos_temp) AND 10.^ioneqt LE max(atmos_temp))
+    ;
+    he1_frac=ch_interp_atmos(he_fracs[k,1,0],10.^ioneqt[k],temp)
+    he2_frac=ch_interp_atmos(he_fracs[k,1,1],10.^ioneqt[k],temp,index_good=index_good)
+    he3_frac=dblarr(n_elements(temp))
+    he3_frac[index_good]=1.0d0-he1_frac[index_good]-he2_frac[index_good]
+  ENDELSE 
+
+  ct_model={h_elec:h_elec,$
+            h1_frac:h1_frac,$
+            h2_frac:h2_frac,$
+            he1_frac:he1_frac,$
+            he2_frac:he2_frac,$
+            he3_frac:he3_frac,$
+            he_abund:he_abund}
+    
+  IF tag_exist(atmos_params,'elec_dens') THEN BEGIN
+    total_elec=ch_interp_atmos(atmos_params.elec_dens,atmos_temp,temp)
+    ct_model=add_tag(ct_model,total_elec,'total_elec')
+  ENDIF
+  
+  IF tag_exist(atmos_params,'height') THEN BEGIN
+    model_height=ch_interp_atmos(atmos_params.height,atmos_temp,temp)
+    ct_model=add_tag(ct_model,model_height,'model_height')
+  ENDIF
+  
+  IF tag_exist(atmos_params,'pressure') THEN BEGIN
+    total_pressure=ch_interp_atmos(atmos_params.pressure,atmos_temp,temp)
+    ct_model=add_tag(ct_model,total_pressure,'total_pressure')
+  ENDIF 
+
+ENDIF 
+
+;
+; This is for the special case where the H and He data in atmos_params are
+; scalars.
+;
+IF keyword_set(ct) AND swtch EQ 1 THEN BEGIN
+  ;
+  ; If the helium fractions are not specified in atmos_params, then set the
+  ; He fractions to zero.
+  ;
+  IF tag_exist(atmos_params,'he1_frac') AND tag_exist(atmos_params,'he2_frac')  THEN BEGIN
+    he1_frac=double(atmos_params.he1_frac[0])
+    he2_frac=double(atmos_params.he2_frac[0])
+    he3_frac=(1d0-he1_frac-he2_frac)>0.
+  ENDIF ELSE BEGIN
+    he1_frac=0d0
+    he2_frac=0d0
+    he3_frac=0d0
+    he_abund=0d0
+  ENDELSE 
+  ;
+  ct_model={h_elec: double(atmos_params.h_elec[0]), $
+            h1_frac: double(atmos_params.h1_frac[0]), $
+            h2_frac: (1d0-atmos_params.h1_frac[0])>0., $
+            he1_frac:he1_frac,$
+            he2_frac:he2_frac,$
+            he3_frac:he3_frac,$
+            he_abund:he_abund}
+ENDIF
+
 
 
 if keyword_set(ct) then $

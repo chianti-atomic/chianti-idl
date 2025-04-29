@@ -206,6 +206,27 @@
 ;                      By default, the file avrett_atmos.dat is read, with data from
 ;                      Avrett E.H., Loeser R., 2008, ApJ, 175, 229
 ;
+;       ATMOS_PARAMS: This is a structure containing the atmospheric parameters, and is
+;                     an alternative to giving ATMOSPHERE (see above). The tags are:
+;
+;                     .h_elec  ratio of hydrogen to electron number density (required)
+;                     .h1_frac neutral hydrogen fraction (required)
+;                     .he1_frac neutral helium fraction
+;                     .he2_frac singly ionised helium fraction
+;                     .temp    the temperatures (K) at which the above parameters are
+;                              defined.
+;
+;                     The helium data are optional (helium ion fractions will be
+;                     calculated from !ioneq_file if they are not specified). If the tags
+;                     elec_dens, pressure and height are present, then they will be added
+;                     to the output structure, but they are not essential for
+;                     incorporating charge transfer.
+;
+;                     Special case: if h_elec and h1_frac are scalars, then they are
+;                     applied to all of the input temperatures TEMP. This is specifically
+;                     for creating lookup tables for a range of hydrogen (and helium)
+;                     parameters. In this case the temp tag in atmos_params is ignored.
+;
 ;       HE_ABUND:  The total helium abundance relative to hydrogen. 
 ;
 ;
@@ -765,7 +786,10 @@
 ;          v.61, 05 Sep 2024, Roger Dufresne
 ;                Minor alteration to reading system time when creating ioneq name.
 ;
-;   VERSION 61
+;          v.62, 29-Apr-2025, Graham Kerr & Peter Young
+;                Added atmos_params= optional input.
+;
+;   VERSION 62
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -799,7 +823,8 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
                   noionrec=noionrec, no_rrec=no_rrec, lookup=lookup, $
                   regular=regular, sparse=sparse, lapack=lapack, $
                   no_auto=no_auto,ioneq_logt=ioneq_logt, advanced_model=advanced_model,ct=ct,$
-                  atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression
+                  atmosphere=atmosphere,he_abund=he_abund,dr_suppression=dr_suppression,$
+                  atmos_params=atmos_params
 
 ;
   if n_params() lt 2 then begin
@@ -1381,12 +1406,13 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
 
 ; calculate on the fly but also WRITE the new ionization equilibrium, for later use.
      
-     ioneq= ch_calc_ioneq (10.^ioneq_logt, outname=ioneq_name, $
-                           density=density,pressure=pressure,model_file=model_file,$
-                           /advanced_model, ct=ct,$
-                           elements=elements,$
-                           atmosphere=atmosphere,he_abund=he_abund,verbose=verbose,$
-                           err_msg =err_calc, warning_msg=warning_msg,dr_suppression=dr_suppression)
+     ioneq= ch_calc_ioneq(10.^ioneq_logt, outname=ioneq_name, $
+                          density=density,pressure=pressure,model_file=model_file,$
+                          /advanced_model, ct=ct,$
+                          elements=elements,$
+                          atmosphere=atmosphere,he_abund=he_abund,verbose=verbose,$
+                          err_msg =err_calc, warning_msg=warning_msg,dr_suppression=dr_suppression,$
+                          atmos_params=atmos_params)
 
      
      if err_calc ne '' then begin

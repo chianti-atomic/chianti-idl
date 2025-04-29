@@ -173,6 +173,26 @@
 ;
 ;       WARNING_MSG: a string array to receive relevant warning messages
 ;
+;       ATMOS_PARAMS: This is a structure containing the atmospheric parameters, and is
+;                     an alternative to giving ATMOSPHERE_FILE. The tags are:
+;
+;                     .h_elec  ratio of hydrogen to electron number density (required)
+;                     .h1_frac neutral hydrogen fraction (required)
+;                     .he1_frac neutral helium fraction
+;                     .he2_frac singly ionised helium fraction
+;                     .temp    the temperatures (K) at which the above parameters are
+;                              defined.
+;
+;                     The helium data are optional (helium ion fractions will be
+;                     calculated from !ioneq_file if they are not specified). If the tags
+;                     elec_dens, pressure and height are present, then they will be added
+;                     to the output structure, but they are not essential for
+;                     incorporating charge transfer.
+;
+;                     Special case: if h_elec and h1_frac are scalars, then they are
+;                     applied to all of the input temperatures TEMP. This is specifically
+;                     for creating lookup tables for a range of hydrogen (and helium)
+;                     parameters. In this case the temp tag in atmos_params is ignored.
 ;
 ; OUTPUTS:
 ;
@@ -278,15 +298,20 @@
 ;
 ;     v.14, 24-Sep-2024, Peter Young
 ;                The elements can now be specified as lower case strings.
+;     v.15, 01-Apr-2025, Graham Kerr
+;                Added atmos_params functionality, providing values needed for ch_adv_model_setup.pro
+;                directly without needing to read an atmosphere (intended for use in producing large
+;                lookup tables).
 ;
-; VERSION    v.14
+; VERSION    v.15
 ;-
 
 
 function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=density,$
-                       pressure=pressure,model_file=model_file,advanced_model=advanced_model,ct=ct,$
-                       atmosphere_file=atmosphere_file,he_abund=he_abund,verbose=verbose,quiet=quiet,$
-                       err_msg=err_msg,warning_msg=warning_msg,dr_suppression=dr_suppression
+                           pressure=pressure,model_file=model_file,advanced_model=advanced_model,ct=ct,$
+                           atmosphere_file=atmosphere_file,he_abund=he_abund,verbose=verbose,quiet=quiet,$
+                           err_msg=err_msg,warning_msg=warning_msg,dr_suppression=dr_suppression,$
+                           atmos_params=atmos_params
 
   t1=systime(1)
   err_msg=''
@@ -458,20 +483,29 @@ function ch_calc_ioneq,temperatures,outname=outname,elements=elements,density=de
     ion_comments=''
 
     if keyword_set(ct) then begin
-      if n_elements(atmosphere_file) eq 0 then begin
-        atmosphere_file=ch_get_file(path=concat_dir(concat_dir(concat_dir(!xuvtop,'ancillary_data'),$
-          'advanced_models'),'model_atmospheres'),filter='*.dat',tit='Select an atmosphere file for the charge transfer calculation') 
-      endif else begin
-        if not file_exist(atmosphere_file) then begin
-          err_msg='% CH_CALC_IONEQ: ERROR, input atmosphere file does not exist'
-          print,err_msg & return,-1
-        endif
-      endelse
-      ion_comments=[ion_comments,'Charge transfer has been included in these ion balances']
-      ion_comments=[ion_comments,' using the model atmosphere file - '+atmosphere_file]
+        if n_elements(atmos_params) gt 0 then begin
+            ion_comments=[ion_comments,'Charge transfer has been included in these ion balances']
+            ion_comments=[ion_comments,' using the user provided atmosphere params - ']
+        endif else begin 
+            if n_elements(atmosphere_file) eq 0 then begin
+                atmosphere_file=ch_get_file(path=concat_dir(concat_dir(concat_dir(!xuvtop,'ancillary_data'),$
+                'advanced_models'),'model_atmospheres'),filter='*.dat',tit='Select an atmosphere file for the charge transfer calculation') 
+            endif else begin
+                if not file_exist(atmosphere_file) then begin
+                    err_msg='% CH_CALC_IONEQ: ERROR, input atmosphere file does not exist'
+                    print,err_msg & return,-1
+                endif
+            endelse
+            ion_comments=[ion_comments,'Charge transfer has been included in these ion balances']
+            ion_comments=[ion_comments,' using the model atmosphere file - '+atmosphere_file]
+        endelse
     endif   
 
-    params=ch_adv_model_setup(temperatures,ct=ct,atmosphere_file=atmosphere_file,he_abund=he_abund)
+    if n_elements(atmos_params) gt 0 then begin
+        params=ch_adv_model_setup(temperatures,ct=ct,atmos_params=atmos_params,he_abund=he_abund)
+    endif else begin
+        params=ch_adv_model_setup(temperatures,ct=ct,atmosphere_file=atmosphere_file,he_abund=he_abund)
+    endelse
 
     model_ions=params.model_ions
     ions_nlevels=params.ions_nlevels ; GDZ
