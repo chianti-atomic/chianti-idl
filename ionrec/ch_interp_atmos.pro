@@ -1,6 +1,6 @@
 
 FUNCTION ch_interp_atmos, param, temp, output_temp, plot=plot, quiet=quiet, $
-                          index_good=index_good
+                          index_good=index_good, spline=spline
 
 ;+
 ; NAME:
@@ -28,6 +28,8 @@ FUNCTION ch_interp_atmos, param, temp, output_temp, plot=plot, quiet=quiet, $
 ;             IDL window.
 ;     PLOT:   If set, then a plot showing the interpolation result will be
 ;             shown.
+;     SPLINE: If set, then spline interpolation is used (i.e., the /spline
+;             keyword is set for interpol) instead of linear interpolation.
 ;
 ; OUTPUTS:
 ;     An array of same size as OUTPUT_TEMP containing the interpolated
@@ -58,11 +60,14 @@ FUNCTION ch_interp_atmos, param, temp, output_temp, plot=plot, quiet=quiet, $
 ;     Ver.1, 23-Apr-2025, Peter Young
 ;       Adapted from code in ch_adv_model_setup (GDZ,RPD), however I've switched
 ;       to using spline interpolation (instead of linear interpolation).
+;     Ver.2, 30-Apr-2025, Peter Young
+;       Made the default to be linear interpolation, with spline interpolation
+;       enabled by the /spline keyword.
 ;-
 
 
 IF n_params() LT 3 THEN BEGIN
-  print,'Use:  IDL> newparam = ch_interp_atmos( param, temp, output_temp [, /plot, /quiet ] )'
+  print,'Use:  IDL> newparam = ch_interp_atmos( param, temp, output_temp [, /plot, /quiet, /spline ] )'
   return,-1
 ENDIF 
 
@@ -98,11 +103,10 @@ out_temp=output_temp[k]
 index_good=k
 
 ;
-; The spline option for interpol requires at least 4 data points. For less
-; than this, the default (linear interpolation) is used.
+; The spline option for interpol requires at least 4 data points. 
 ;
 nt=n_elements(temp_use)
-IF nt GE 4 THEN spline=1 ELSE spline=0
+IF nt LT 4 THEN spline=0
 outparam[k]=10.0d0^interpol(alog10(param_use),alog10(temp_use),alog10(out_temp), $
                            spline=spline)
 

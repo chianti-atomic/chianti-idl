@@ -150,7 +150,12 @@
 ;                          use in producing large lookup tables). The routine now calls
 ;                          ch_read_atmos and ch_interp_atmos
 ;
-; VERSION:  9
+;       v.10, 30-Apr-2025, Peter Young
+;                          The /spline option is used when interpolating the helium ion
+;                          fraction data; force the ion fractions to be >= 0 (no negative
+;                          values).
+;
+; VERSION:  10
 ;
 ;- 
 
@@ -239,18 +244,18 @@ IF keyword_set(ct) AND swtch EQ 0 THEN BEGIN
     ; Limit ioneq temperature to the range of the atmosphere model.
     k=where(10.^ioneqt GE min(atmos_temp) AND 10.^ioneqt LE max(atmos_temp))
     ;
-    he1_frac=ch_interp_atmos(he_fracs[k,1,0],10.^ioneqt[k],temp)
-    he2_frac=ch_interp_atmos(he_fracs[k,1,1],10.^ioneqt[k],temp,index_good=index_good)
+    he1_frac=ch_interp_atmos(he_fracs[k,1,0],10.^ioneqt[k],temp,/spline)
+    he2_frac=ch_interp_atmos(he_fracs[k,1,1],10.^ioneqt[k],temp,index_good=index_good,/spline)
     he3_frac=dblarr(n_elements(temp))
     he3_frac[index_good]=1.0d0-he1_frac[index_good]-he2_frac[index_good]
   ENDELSE 
 
   ct_model={h_elec:h_elec,$
-            h1_frac:h1_frac,$
-            h2_frac:h2_frac,$
-            he1_frac:he1_frac,$
-            he2_frac:he2_frac,$
-            he3_frac:he3_frac,$
+            h1_frac:h1_frac>0.,$
+            h2_frac:h2_frac>0.,$
+            he1_frac:he1_frac>0.,$
+            he2_frac:he2_frac>0.,$
+            he3_frac:he3_frac>0.,$
             he_abund:he_abund}
     
   IF tag_exist(atmos_params,'elec_dens') THEN BEGIN
