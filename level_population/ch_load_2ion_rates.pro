@@ -93,6 +93,12 @@ FUNCTION ch_load_2ion_rates, rates1, rates2, error=error, verbose=verbose, no_rr
 ;
 ;      v.7, 23 April 2024,  Giulio Del Zanna
 ;         clearing some memory for large calculations.
+;
+;      v.8, 06 May 2025, Peter Young
+;         In the case the autostr tag does not exist, then the ai, dc
+;         and dr tags have been added to the output. The ai and dc tags
+;         contain zeros, and the dr array is zero except for the
+;         ground-to-ground transition (n1->0) which is the total DR rate.
 ; 
 ;-
 
@@ -346,26 +352,43 @@ rrec=rates1.ion_data.rrec
 ; return OUTPUT. Otherwise, we keep going.
 ;
 
+; ------------------------------
+; Create the autoionization (AI) and dielectronic capture (DC) rate
+; arrays. 
+;
+  ai=dblarr(nlev_matrix,nlev_matrix)
+  dc=dblarr(ntm,nlev_matrix,nlev_matrix)
+
+
+  ;
+  ; For CHIANTI versions 9-11, ch_load_2ion_rates is not called if the tag autostr
+  ; does not exist, so the IF statement below isn't necessary. This may change in
+  ; the future.
+  ;
   IF NOT tag_exist(rates1.ion_data,'autostr') THEN begin 
 
+    ;
+    ; It's still necessary to have the ai, dc and dr arrays if autostr does not
+    ; exist (i.e., there are no autoionization rates). The ai and dc rates are
+    ; zeros, and the dr n1->0 rate is set to the total DR rate.
+    ;
+    dr=dblarr(ntm,nlev_matrix,nlev_matrix)
+    total_dr_badnell=recomb_rate(rates2.ion_data.gname,t,/diel) 
+    dr[*,n1,0]= total_dr_badnell
+    
      output={ n_levels: nlev_matrix, $
               aa: aa, $
               qq: qq, $
               aax: aax, $
               ppr: ppr, $
               ioniz:ioniz,$
-              rr:rr }
+              rr:rr, $
+              ai: ai, $
+              dc: dc, $
+              dr: dr}
 
   endif else begin 
 
-; ------------------------------
-; Create the autoionization (AI) and dielectronic capture (DC) rate
-; arrays. 
-;
-
-     
-     ai=dblarr(nlev_matrix,nlev_matrix)
-     dc=dblarr(ntm,nlev_matrix,nlev_matrix)
 
 ;
 ; Fill the AI array. Note that the lower levels are in ION2.
