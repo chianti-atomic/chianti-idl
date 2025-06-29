@@ -97,7 +97,9 @@
 ;     Ver.9, 04-Feb-2021, Peter Young
 ;        /ignore_limit wasn't working correctly so this has
 ;        been fixed; added message about how many limits have been
-;        ignored. 
+;        ignored.
+;     Ver.10, 24-Jun-2025, Peter Young
+;        Fixed bug when params is specified.
 ;-
 
 
@@ -148,8 +150,8 @@ IF n_elements(params) EQ 0 THEN BEGIN
   ENDELSE 
 ENDIF ELSE BEGIN
   np=n_elements(params)
-  IF np NE 4 THEN BEGIN
-    print,'%WRITE_SCUPS: the input PARAMS must have 4 elements.'
+  IF np NE 5 THEN BEGIN
+    message,/info,/cont,'the input PARAMS must have 4 elements. Returning...'
     return
   ENDIF 
 ENDELSE

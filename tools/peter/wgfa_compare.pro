@@ -1,6 +1,6 @@
 
 PRO wgfa_compare, file1, file2, list_file1=list_file1, list_file2=list_file2, $
-                  limit=limit, lev_cutoff=lev_cutoff
+                  limit=limit, lev_cutoff=lev_cutoff, aval_cutoff=aval_cutoff
 
 ;+
 ; NAME
@@ -36,7 +36,11 @@ PRO wgfa_compare, file1, file2, list_file1=list_file1, list_file2=list_file2, $
 ;
 ;    LEV_CUTOFF If set, then only transitions with lower level
 ;               indices less than or equal to LEV_CUTOFF will be
-;               considered. 
+;               considered.
+;
+;    AVAL_CUTOFF: Only A-values above this value will be displayed. The
+;                 cutoff is applied to the stronger of the transitions
+;                 from the two models.
 ;
 ; HISTORY
 ;
@@ -45,16 +49,20 @@ PRO wgfa_compare, file1, file2, list_file1=list_file1, list_file2=list_file2, $
 ;       added lev_cutoff= keyword
 ;    Ver.3, 6-Oct-2009, Peter Young
 ;       renamed as wgfa_compare
+;    Ver.4, 26-Jun-2025, Peter Young
+;       added aval_cutoff= optional input.
 ;-
 
 IF n_params() LT 2 THEN BEGIN
   print,'Use: IDL> wgfa_compare, file1, file2, /list_file1, /list_file2,'
-  print,'                          limit=, lev_cutoff='
+  print,'                          limit=, lev_cutoff=, aval_cutoff='
   return
 ENDIF
  
 
 IF n_elements(limit) EQ 0 THEN limit=0.1 ELSE limit=float(limit)
+
+IF n_elements(aval_cutoff) EQ 0 THEN aval_cutoff=1e-10
 
 read_wgfa_pry,file1,str1,ref
 read_wgfa_pry,file2,str2,ref
@@ -84,7 +92,7 @@ FOR i=0,n1-1 DO BEGIN
     aval1=str1[i].aval
     aval2=str2[ind[0]].aval
     tst=(aval2-aval1)/aval1
-    IF abs(tst) GT limit THEN BEGIN
+    IF abs(tst) GT limit AND max([aval1,aval2]) GE aval_cutoff THEN BEGIN
       print,format='(2i3,f10.3,2e10.2,f8.2)',l1,l2,str1[i].wvl,aval1,aval2,tst*100.
     ENDIF
   ENDIF ELSE BEGIN

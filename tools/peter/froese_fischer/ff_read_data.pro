@@ -64,6 +64,10 @@
 ; MODIFICATION HISTORY:
 ;       Ver.1, 12-Jun-2017, Peter Young
 ;         Modified from earlier routine, and renamed.
+;       Ver.2, 29-Jun-2025, Peter Young
+;         When checking for duplicate transitions, I now check the
+;         energies of the lower and upper levels. Previously I was
+;         using "chckstr" (this didn't work for Ne IV).
 ;-
 
 
@@ -129,7 +133,7 @@ END
 
 
 ;-----------------------------------------------
-PRO ff_read_data, fname, trans
+PRO ff_read_data, fname, trans, alt=alt
 
 openr,lun,fname,/get_lun
 
@@ -145,6 +149,15 @@ trans=0
 
 type=''
 
+IF keyword_set(alt) THEN BEGIN
+  format='(6x,i3,i4,a4,2f11.0,21x,e10.0,e10.0)'
+  line_length=80
+ENDIF ELSE BEGIN 
+  format='(7x,2i3,a4,2f14.0,37x,e10.0,e11.0)'
+  line_length=103
+ENDELSE 
+
+
 count=7
 swtch=0
 WHILE eof(lun) NE 1 DO BEGIN
@@ -155,6 +168,9 @@ WHILE eof(lun) NE 1 DO BEGIN
   ENDIF ELSE BEGIN
     CASE swtch OF 
       0: BEGIN
+        ;
+        ; If swtch=0 then expect to read the configuration strings.
+        ;
         bits=str_sep(str1,' - ')
         IF n_elements(bits) LT 5 AND n_elements(bits) GT 1 THEN BEGIN
           conf1=trim(bits[0])
@@ -164,9 +180,10 @@ WHILE eof(lun) NE 1 DO BEGIN
           swtch=1
         ENDIF
        ;
-       ; the section of code below had to be introduced for O I
-       ; where, if the configurations has to changed from the previous
-       ; entry, then FF skipped writing them
+       ; Sometimes multiple term transitions are given under the same
+       ; configuration transition. The additional term transitions are
+       ; identified by the lack of a '-'. I then process str1 to get
+       ; the two terms.
        ;
         IF n_elements(bits) EQ 1 THEN BEGIN
           str1=trim(str1)
@@ -188,13 +205,13 @@ WHILE eof(lun) NE 1 DO BEGIN
       END
 
       2: BEGIN
-        IF strlen(str1) NE 103 THEN BEGIN
-          print,'%PROCESS_FF_DATA: warning, string length is not 103 characters!'
+        IF strlen(str1) NE line_length THEN BEGIN
+          print,'%PROCESS_FF_DATA: warning, string length is not '+trim(line_length)+' characters!'
           print,'                  may be due to tabs in input string'
           print,'         Line : '+trim(count)
         ENDIF 
-        reads,str1,format='(7x,2i3,a4,3f14.0,23x,e10.0,e11.0)', $
-             wgt1,wgt2,type,e1,e2,e,f,aval
+        reads,str1,format=format, $
+             wgt1,wgt2,type,e1,e2,f,aval
         str.conf1=trim(conf1)
         str.conf2=trim(conf2)
         str.lev1=term1+wgt2string(wgt1)
@@ -202,7 +219,7 @@ WHILE eof(lun) NE 1 DO BEGIN
         str.gf=0.
         str.e1_cm=e1
         str.e2_cm=e2
-        str.de_cm=e
+        str.de_cm=e2-e1
         chckstr=str.conf1+str.conf2+str.lev1+str.lev2
         str.chckstr=chckstr
         IF trim(type) EQ 'E1' THEN str.gf=f*wgt1
@@ -216,7 +233,8 @@ WHILE eof(lun) NE 1 DO BEGIN
          ; the two A-values. For the gf value the maximum of the tabulated
          ; gf values is given
          ;
-          ind=where(chckstr EQ trans.chckstr)
+          ind=where(str.e1_cm EQ trans.e1_cm AND str.e2_cm EQ trans.e2_cm)
+;          ind=where(chckstr EQ trans.chckstr)
           IF ind[0] EQ -1 THEN BEGIN
             trans=[trans,str]
           ENDIF ELSE BEGIN

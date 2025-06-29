@@ -1,5 +1,5 @@
 
-PRO ff_write_wgfa, trans, levstr, outfile
+PRO ff_write_wgfa, trans, levstr, outfile, maxlev=maxlev
 
 ;+
 ; NAME:
@@ -17,6 +17,10 @@ PRO ff_write_wgfa, trans, levstr, outfile
 ;            level index (see ff_read_levels.pro).
 ;    OUTFILE:Name of the CHIANTI .wgfa file to write to.
 ;
+; OPTIONAL INPUTS:
+;    Maxlev: Only transitions with level indices less than this
+;            number will be printed to the wgfa file.
+;
 ; OUTPUTS:
 ;    Sends the radiative data to OUTFILE in the CHIANTI .wgfa format.
 ;
@@ -26,12 +30,16 @@ PRO ff_write_wgfa, trans, levstr, outfile
 ;       Added check for multiple matches to same level.
 ;    Ver.3, 12-Jun-2017, Peter Young
 ;       Now accepts new format for levstr structure.
+;    Ver.4, 26-Jun-2025, Peter Young
+;       Added maxlev= optional input.
 ;-
 
 IF n_params() LT 3 THEN BEGIN
-  print,'Use:  IDL> ff_write_wgfa, trans, levstr, outfile'
+  print,'Use:  IDL> ff_write_wgfa, trans, levstr, outfile [ maxlev= ]'
   return
 ENDIF 
+
+IF n_elements(maxlev) EQ 0 THEN maxlev=max(levstr.ind)
 
 openw,lout,outfile,/get_lun
 
@@ -72,8 +80,10 @@ FOR i=0,n-1 DO BEGIN
     lev1=levstr[k1].ind
     lev2=levstr[k2].ind
     wvl=1d8/abs(trans[i].e1_cm-trans[i].e2_cm)
-    printf,lout,format='(2i5,f15.3,2e15.3)',lev1,lev2,wvl,trans[i].gf, $
-           trans[i].aval 
+    IF lev1 LE maxlev AND lev2 LE maxlev THEN BEGIN 
+      printf,lout,format='(2i5,f15.3,2e15.3)',lev1,lev2,wvl,trans[i].gf, $
+             trans[i].aval
+    ENDIF 
   ENDIF
 ENDFOR
 
