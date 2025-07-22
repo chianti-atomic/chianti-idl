@@ -1,6 +1,6 @@
 
 FUNCTION ioniz_rate,gname,temperature_in,z=z,ion=ion,verbose=verbose, $
-                    di_rates=di_rates, ea_rates=ea_rates
+                    di_rates=di_rates, ea_rates=ea_rates, data=data
 
 ;+
 ; NAME:
@@ -8,6 +8,7 @@ FUNCTION ioniz_rate,gname,temperature_in,z=z,ion=ion,verbose=verbose, $
 ;
 ; PURPOSE:
 ;     This routine computes the total ionization rate coefficient of an ion.
+;     For more details see CHIANTI Technical Report No. 34.
 ;
 ; CATEGORY:
 ;     CHIANTI; rates; ionization.
@@ -40,6 +41,20 @@ FUNCTION ioniz_rate,gname,temperature_in,z=z,ion=ion,verbose=verbose, $
 ;                ionization rates.
 ;     Ea_Rates:  An array of same size as TEMPERATURE containing the 
 ;                excitation-autoionization rates.
+;     Data:  An IDL structure containing various parameters from the
+;            calculations. The tags are:
+;             .ion_name  Name of the ion in CHIANTI format.
+;             .temp   Temperature (K).
+;             .tot_rate  Total ionization rate coefficient (cm^3 s^-1).
+;             .di_rate   Direct ionization rate coefficient (cm^3 s^-1).
+;             .ea_rate   EA ionization rate coefficient (cm^3 s^-1).
+;             .energy   Energy (eV) at which DI cross section tabulated.
+;             .di_cross_section  Direct ionization cross section (cm^2).
+;             .ioniz_potential  Ionization potential (eV).
+;
+;            energy and di_cross_section are float arrays with 12 elements,
+;            corresponding to the 12 Gauss-Laguerre points used for the
+;            integration. See CHIANTI Technical Report 34 for more details.
 ;
 ; CALLS:
 ;     ZION2FILENAME, SCALE_BT, DESCALE_BT, READ_SPLUPS, DESCALE_ALL
@@ -59,6 +74,8 @@ FUNCTION ioniz_rate,gname,temperature_in,z=z,ion=ion,verbose=verbose, $
 ;     Ver.3, 18-Apr-2025, Peter Young
 ;       Updated header; added informational messages; tidied up code; added
 ;       ea_rates and di_rates optional outputs.
+;     Ver.4, 22-Jul-2025, Peter Young
+;       Added data= optional output structure; updated header.
 ;-
 
 
@@ -66,7 +83,7 @@ FUNCTION ioniz_rate,gname,temperature_in,z=z,ion=ion,verbose=verbose, $
 if n_params() lt 2 then begin
    print,' '
    print,'Use: IDL> rate=ioniz_rate(gname,temperature,[z=, ion=, di_rates=, ea_rates='
-   print,'                            /verbose]) '
+   print,'                            /verbose, data=data ]) '
    print,'    calculate the ionization rate coefficient in cm^3 s^-1 '
    print,'    as a function of temperature (K) '
    print,' '
@@ -233,6 +250,18 @@ endif else totrate=dirate
 
 di_rates=dirate
 IF n_elements(earate) EQ 0 THEN ea_rates=dblarr(ntemps) ELSE ea_rates=earate
+
+;
+; Define the DATA output structure.
+;
+data={ion_name: gname, $
+      temp: temperature, $
+      tot_rate: totrate, $
+      di_rate: di_rates, $
+      ea_rate: ea_rates, $
+      energy: evd2, $
+      di_cross_section: crossgl, $
+      ioniz_potential: ev1[0]}
 
 return,totrate
 
