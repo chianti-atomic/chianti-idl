@@ -789,7 +789,11 @@
 ;          v.62, 29-Apr-2025, Graham Kerr & Peter Young
 ;                Added atmos_params= optional input.
 ;
-;   VERSION 62
+;          v.63, 31-Jul-2025, Peter Young
+;                Fixed problem if the ioneq file is specified as an input but it
+;                only contains one temperature
+;
+;   VERSION 63
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1097,7 +1101,7 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
         print, ''
      END
 
-     dlnt=ALOG(10.^(ioneq_logt[1]-ioneq_logt[0]))      
+;     dlnt=ALOG(10.^(ioneq_logt[1]-ioneq_logt[0]))      
 
   endif     else begin
 
@@ -1597,11 +1601,15 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
 ; GDZ - advanced model change: 
               if  keyword_set(advanced_model) then begin 
                  ion_frac = this_ioneq[t_index]
-                 
-              endif else begin 
+               endif else begin
+; PRY, 31-Jul-2025
+; The code below failed if ioneq contained only a single temperature, so I
+; now call to get_ieq which handles this case.
+;
 ;do a spline interpolation in the logs:
-                 ion_frac = spline(ioneq_logt[ind_gioneq],alog10(this_ioneq[ind_gioneq]),log_temp)
-                 ion_frac = 10.^ion_frac
+;                 ion_frac = spline(ioneq_logt[ind_gioneq],alog10(this_ioneq[ind_gioneq]),log_temp)
+;                 ion_frac = 10.^ion_frac
+                ion_frac=get_ieq(temp,gname,ioneq_name=ioneq_name)
               end 
            ENDELSE 
 

@@ -139,6 +139,9 @@ PRO itoh, temp, wvl, int, sumt=sumt, dem_int=dem_int, $
 ;    Ver.9, 07-Dec-2023, Peter Young
 ;            For conversion to keV, I changed indgen to lindgen due to
 ;            errors if there are too many wavelength bins.
+;
+;    Ver.10, 31-Jul-2025, Peter Young
+;            Now calls get_ieq for interpolating the ion fractions.
 ;-
 
 
@@ -357,40 +360,27 @@ FOR z=1,30 DO BEGIN
 
   FOR j=0,nei-1 DO BEGIN
 
-    ii=ioneq[*,elt_i[j],z]
+    yi=get_ieq(temp,elt_i[j]+1,z+1,ioneq_logt=ioneq_t,ioneq_frac=ioneq)
 
-    ti=where(ii NE 0.)
+    IF yi[0] NE -1. THEN BEGIN 
 
-    IF ti[0] NE -1 THEN BEGIN
-
-      ind=where( (alog10(temp) LE max(ioneq_t[ti])) AND $ 
-                 (alog10(temp) GE min(ioneq_t[ti])) )
-
-      IF ind[0] NE -1 THEN BEGIN
-        yy=ii[ti]
-        xx=ioneq_t[ti]
-        xi=alog10(temp[ind])
-        y2=spl_init(xx,yy)
-        yi=spl_interp(xx,yy,y2,xi)
-        
-        contrib=gf[ind,*]*z^2*1.426d-27*abund[elt_i[j]]* $
-             (yi # (dblarr(nw) + 1.)) * $
-             (sqrt(temp[ind]) # (dblarr(nw) + 1.)) * $
-             exp(-little_u[ind,*])*hkt[ind,*]*cc/ $
-             ((dblarr(n_elements(yi)) + 1.) # wvl)^2 * $
-             erg2phot[ind,*] * dem_arr[ind,*]
-
-        int[ind,*]=int[ind,*]+contrib
-
-      ENDIF
-
-    ENDIF
+      contrib=gf*z^2*1.426d-27*abund[elt_i[j]]* $
+              (yi # (dblarr(nw) + 1.)) * $
+              (sqrt(temp) # (dblarr(nw) + 1.)) * $
+              exp(-little_u)*hkt*cc/ $
+              ((dblarr(n_elements(yi)) + 1.) # wvl)^2 * $
+              erg2phot * dem_arr
+      
+      int=int+contrib
+      
+    ENDIF 
 
   ENDFOR
 ENDFOR
 
 ind=where(chk NE 0)
 IF ind[0] NE -1 THEN int[ind]=0d0
+
 
 int=transpose(int)*1d40/4d0/!pi
 

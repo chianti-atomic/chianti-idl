@@ -218,6 +218,9 @@
 ;       Ver.10, 07-Dec-2023, Peter Young
 ;            For conversion to keV, I changed indgen to lindgen due to
 ;            errors if there are too many wavelength bins.
+;
+;       Ver.11, 31-Jul-2025, Peter Young
+;            Now calls get_ieq for interpolating the ion fractions.
 ;-
 
 
@@ -265,7 +268,7 @@ zmax=max(where(abund gt 0.))+1
 IF n_elements(min_abund) EQ 0 THEN min_abund=0.
 
 n_ioneq_logt=n_elements(ioneq_logt)
-dlnt=alog(10.^(ioneq_logt(1)-ioneq_logt(0)))
+;dlnt=alog(10.^(ioneq_logt(1)-ioneq_logt(0)))
 ;
 ;  read free-free gaunt factors
 ;
@@ -407,28 +410,18 @@ FOR z=1,30 DO BEGIN
 
   FOR iz=0,nei-1 DO BEGIN
     this_abund=abund[elt_i[iz]]
-    this_ioneq=ioneq(*,elt_i[iz],z)
-    ti=where(this_ioneq NE 0.)
-    IF ti[0] NE -1 THEN BEGIN
-      ind=where( (alog10(temp) LE max(ioneq_logt[ti])) AND $ 
-                 (alog10(temp) GE min(ioneq_logt[ti])) )
-      IF ind[0] NE -1 THEN BEGIN
-        yy=alog10(this_ioneq[ti])
-        xx=ioneq_logt[ti]
-        xi=alog10(temp[ind])
-        y2=spl_init(xx,yy)
-        yi=10.^spl_interp(xx,yy,y2,xi)
 
-        newfactor=this_abund*yi*factor*c*1d8*rescale/sqrt(temp[ind])* $
-             em_vals[ind] * demfactor[ind]
+    yi=get_ieq(temp,elt_i[iz]+1,z+1,ioneq_logt=ioneq_logt, $
+               ioneq_frac=ioneq)
 
-        rad[*,ind]=rad[*,ind]+(ident_wvl#newfactor)*newbig[*,ind]* $
-             erg2phot[*,ind]
-      ENDIF
-    ENDIF
+    newfactor=this_abund*yi*factor*c*1d8*rescale/sqrt(temp)* $
+              em_vals * demfactor
+
+    rad=rad+(ident_wvl#newfactor)*newbig*erg2phot
+
   ENDFOR
-ENDFOR
 
+ENDFOR
 
 ;
 ; multiply int by the hc/E^2 factor if /kev set
