@@ -48,6 +48,8 @@
 ;     Ver.1, 5-Oct-2009, Peter Young
 ;     Ver.2, 12-Jun-2017, Peter Young
 ;        Now use different plotting symbols for different transitions.
+;     Ver.3, 11-Aug-2025, Peter Young
+;        Made some updates.
 ;-
 
 
@@ -124,20 +126,28 @@ count=0
 ;
 FOR i=0,n-1 DO BEGIN
   ind=where(ll_1[i] EQ ll_2 AND ul_1[i] EQ ul_2)
- ;
+  ;
+  ; Proceed if the transition is found in file 2.
+  ;
   IF ind[0] NE -1 THEN BEGIN
-   ;
+    ;
+    ; swtch1=1 if this transition is the strongest from the file1
+    ; upper level.
+    ;
     k1=where(ul_1 EQ ul_1[i])
     IF aval_1[i] EQ max(aval_1[k1]) THEN swtch1=1 ELSE swtch1=0
-   ;
+    ;
+    ; swtch2=1 if this transition is the strongest from the file2
+    ; upper level.
+    ;
     k2=where(ul_2 EQ ul_2[ind[0]])
-    IF aval_2[i] EQ max(aval_2[k1]) THEN swtch2=1 ELSE swtch2=0
+    IF aval_2[ind[0]] EQ max(aval_2[k2]) THEN swtch2=1 ELSE swtch2=0
    ;
     CASE 1 OF
-      swtch1 EQ 0 AND swtch2 EQ 0: psym=2
-      swtch1 EQ 1 AND swtch2 EQ 1: psym=6
-      swtch1 EQ 0 AND swtch2 EQ 1: psym=5
-      swtch1 EQ 1 AND swtch2 EQ 0: psym=7
+      swtch1 EQ 0 AND swtch2 EQ 0: psym=2  ; star
+      swtch1 EQ 1 AND swtch2 EQ 1: psym=6  ; square
+      swtch1 EQ 0 AND swtch2 EQ 1: psym=5  ; triangle
+      swtch1 EQ 1 AND swtch2 EQ 0: psym=7  ; cross
     ENDCASE 
    ;
     ratio=alog10(aval_2[ind[0]]/aval_1[i])
