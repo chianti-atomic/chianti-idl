@@ -42,6 +42,9 @@ FUNCTION ch_duplicate_transitions, filename, status=status, quiet=quiet
 ;
 ; MODIFICATION HISTORY:
 ;     Ver.1, 06-Feb-2025, Peter Young
+;     Ver.2, 22-Aug-2025, Peter Young
+;      Now checks if the filename contains the filename extension rather than
+;      if it ends with the filename extension.
 ;-
 
 
@@ -55,17 +58,17 @@ IF chck.exists EQ 0 THEN BEGIN
 ENDIF 
 
 CASE 1 OF
-  filename.endswith('wgfa'): BEGIN
+  filename.contains('.wgfa'): BEGIN
     read_wgfa_str,filename,wgfa
     lvl1=wgfa.lvl1
     lvl2=wgfa.lvl2
   END
-  filename.endswith('scups'): BEGIN
+  filename.contains('.scups'): BEGIN
     read_scups,filename,scups
     lvl1=scups.data.lvl1
     lvl2=scups.data.lvl2
   END
-  filename.endswith('rrlvl'): BEGIN
+  filename.contains('.rrlvl'): BEGIN
     rrdata=read_rrlvl(filename.remove(-6),status_rr)
     lvl1=rrdata.initial_level
     lvl2=rrdata.final_level
