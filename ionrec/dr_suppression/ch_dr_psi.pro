@@ -1,5 +1,5 @@
 
-FUNCTION ch_dr_psi, n, q, t
+FUNCTION ch_dr_psi, n, q, t, simple=simple
 
 ;+
 ; NAME:
@@ -21,6 +21,10 @@ FUNCTION ch_dr_psi, n, q, t
 ;      q:    The charge on the ion.
 ;      T:    Temperature (units: K). Can be a 1D array.
 ;
+; KEYWORD PARAMETERS:
+;      SIMPLE: Implements the "simplified" approximation of Table 2
+;              of Nikolic et al. (2018).
+;
 ; OUTPUTS:
 ;      The quantity Psi^N(q,T), as defined by Nikolic et al. It has
 ;      the same size as the input T.
@@ -31,11 +35,13 @@ FUNCTION ch_dr_psi, n, q, t
 ;      Ver.1, 7-Nov-2017, Peter Young
 ;      Ver.2, 15-Jun-2020, Peter Young
 ;        Updated header and comments; no change to code.
+;      Ver.3, 08-Sep-2025, Peter Young
+;        Added /simple keyword.
 ;-
 
 
 IF n_params() LT 3 THEN BEGIN
-  print,'Use:  IDL> psi = ch_dr_psi(N,q,T)'
+  print,'Use:  IDL> psi = ch_dr_psi(N,q,T [,/simple] )'
   print,'   N - isoelectronic sequence index (1-hydrogen, etc)'
   print,'   q - charge on recombining ion'
   print,'   T - temperature (K)'
@@ -43,7 +49,7 @@ IF n_params() LT 3 THEN BEGIN
 ENDIF
 
 IF n GT 5 THEN BEGIN
-  print,'% CH_DR_PSI: the input N must be between 1 and 5. Returning...'
+  message,/info,/cont,'The input N must be between 1 and 5. Returning...'
   return,-1.
 ENDIF 
 
@@ -100,17 +106,19 @@ CASE n OF
   ELSE: return,-1.
 ENDCASE 
 
-
-
-pi=data[0,*]+data[1,*]*q^data[2,*]*exp(-q/data[3,*])
-
-a=(alog10(t)-pi[0])/sqrt(2.0)/pi[1]
-b=(alog10(t)-pi[3])/sqrt(2.0)/pi[4]
 c=sqrt(2.5e4*q^2/t)
+IF keyword_set(simple) THEN BEGIN
+  psi=2.0/(1.0 + exp(-c) )
+ENDIF ELSE BEGIN 
+  pi=data[0,*]+data[1,*]*q^data[2,*]*exp(-q/data[3,*])
 
-psi=2.0 * ( 1 + pi[2]*exp(-a^2) +pi[5]*exp(-b^2) ) / $
-    ( 1.0 + exp(-c) )
-
+  a=(alog10(t)-pi[0])/sqrt(2.0)/pi[1]
+  b=(alog10(t)-pi[3])/sqrt(2.0)/pi[4]
+  
+  psi=2.0 * ( 1 + pi[2]*exp(-a^2) +pi[5]*exp(-b^2) ) / $
+      ( 1.0 + exp(-c) )
+ENDELSE 
+  
 return,psi
 
 END

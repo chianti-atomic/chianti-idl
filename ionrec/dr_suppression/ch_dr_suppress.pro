@@ -55,7 +55,10 @@
 ;        (for low temperature modification to DR rates).
 ;      Ver.4, 12-Jun-2020, Peter Young
 ;        Updated header, changing references to Nikolic et al. (2018)
-;        instead of Nikolic et al. (2013); code unchanged. 
+;        instead of Nikolic et al. (2013); code unchanged.
+;      Ver.5, 08-Sep-2025, Peter Young
+;        Updated value of w to 5.64586 from 5.64548. The latter was
+;        from the 2013 paper, the former is from the 2018 paper.
 ;-
 
 
@@ -96,7 +99,6 @@ ENDIF ELSE BEGIN
   nd=1
 ENDELSE 
 
-
 ;
 ; Compute activation density
 ;
@@ -117,12 +119,11 @@ q0=( 1.-sqrt(2./(3*q)) )*ch_dr_a_n(n,q,temperature)/sqrt(q)
 ;
 t0=5e4*q0^2
 
-
 ;
 ; Activation density - Eq. 3 of Nikolic et al. (2013).
 ;
 xa0=10.1821
-w=5.64548
+w=5.64586
 xa=xa0+alog10( (q/q0)^7 * sqrt(temperature/t0) )
 
 ;
@@ -152,7 +153,6 @@ IF NOT keyword_set(no_lowt) THEN BEGIN
   exp_eps=ch_dr_exp_eps(n,q,x,temperature)
   s=1.0 - (1.0-s)*exp_eps
 ENDIF 
-
 
 ;
 ; Return the suppressed rate.
