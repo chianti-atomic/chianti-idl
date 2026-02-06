@@ -217,8 +217,10 @@
 ;              block; updated header.
 ;
 ;        v16, 1-Feb-2024,  Giulio Del Zanna
-;
 ;              Modified for the ionization equilibrium advanced models.
+;
+;       v.17, 06-Feb-2026, Peter Young
+;              For call to "fix", have added type=3 to return a long integer.
 ;-
 
 
@@ -326,7 +328,7 @@ format='('+strtrim(string(nt),2)+'e10.2)'
 
 read_abund,abund_name,abund,ref
 
-nw=fix((wmax-wmin)/wavestep)+1
+nw=fix((wmax-wmin)/wavestep,type=3)+1
 lmbda=findgen(nw)*wavestep+wmin
 spectrum=dblarr(nw,nt)
 
