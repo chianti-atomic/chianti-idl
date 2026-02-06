@@ -4,7 +4,8 @@ PRO make_chianti_spec, TRANSITIONS, LAMBDA, OUTPUT, BIN_SIZE=BIN_SIZE,  $
         ABUND_NAME=ABUND_NAME, MIN_ABUND=MIN_ABUND, $
         photons=photons, file_effarea=file_effarea, $
         err_msg=err_msg,  verbose=verbose, kev=kev, $
-        no_thermal_width=no_thermal_width, lookup=lookup
+                       no_thermal_width=no_thermal_width, lookup=lookup, $
+                       sngl_ion=sngl_ion
 
 on_error,0
 ;+
@@ -109,7 +110,15 @@ on_error,0
 ;		    bin are summed, and  subsequently convolved with a gaussian
 ;		    of full-width-half-maximum FWHM, if FWHM is not set = 0.
 ;                   Please note that the convolution might not work if a small
-;                   number of  bins is defined. 
+;                   number of  bins is defined.
+;
+;      SNGL_ION: A string or string array containing a list of ions in CHIANTI
+;                format (e.g., 'fe_13' for Fe XIII). If set, then only these
+;                ions will be used for computing the continuum emission (if
+;                /continuum set). If not specified, then all ions will be used
+;                for computing the continuum. NOTE: if sngl_ion was specified
+;                to ch_synthetic, it is *not* automatically passed on to
+;                make_chianti_spec through the TRANSITIONS input.
 ;
 ;               
 ; OUTPUTS     : 
@@ -356,13 +365,19 @@ on_error,0
 ;               v.35, 19-Aug-2024, Peter Young
 ;                 Fixed bug for case where FWHM is much smaller than
 ;                 wavelength pixel size.
+;
+;               v.36, 06-Feb-2026, Peter Young
+;                 Added sngl_ion= optional input; added return
+;                 statement to parameter check.
 ;-
 
 IF  n_params() lt 3 then begin
    print,' type> make_chianti_spec, output_struct,  LAMBDA, SPECTRUM,$ '
    print,'         [BIN_SIZE= , KEV= ,INSTR_FWHM= , PIXEL=PIXEL, $'
-   print,'       WRANGE= , ALL=ALL, continuum=continuum, $'
-   print,'     ABUND_NAME= , MIN_ABUND=, BINSIZE = BINSIZE effarea=, /LOOKUP] '
+   print,'         WRANGE= , ALL=ALL, /CONTINUUM, $'
+   print,'         ABUND_NAME= , MIN_ABUND=, BINSIZE = BINSIZE effarea=, $ '
+   print,'         /LOOKUP, SNGL_ION= ] '
+   return
 END
 
 ;
@@ -1010,16 +1025,19 @@ IF KEYWORD_SET(continuum) THEN BEGIN
     ;
       freebound, temp,lambda,fb,/no_setup,min_abund=min_abund, $
                  photons=photons, dem_int=dem_int,/sumt, VERBOSE=VERBOSE, kev=kev, $
-               ioneq_file=ioneq_name, abund_file=abund_name
+                 ioneq_file=ioneq_name, abund_file=abund_name, $
+                 sngl_ion=sngl_ion
 
       freefree,temp,lambda,ff,min_abund=min_abund, $
                photons=photons, dem_int=dem_int,/sumt, VERBOSE=VERBOSE, kev=kev, $
-               ioneq_file=ioneq_name, abund_file=abund_name
-
+               ioneq_file=ioneq_name, abund_file=abund_name, $
+               sngl_ion=sngl_ion
+      
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, dem_int=dem_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, abund_file=abund_name, $
-                  ioneq_file=ioneq_name, lookup=lookup
+                  ioneq_file=ioneq_name, lookup=lookup, $
+                  sngl_ion=sngl_ion
 
    ENDIF   ELSE BEGIN 
 
@@ -1045,16 +1063,19 @@ IF KEYWORD_SET(continuum) THEN BEGIN
     ;
       freebound, temp,lambda,fb,/no_setup,min_abund=min_abund, $
                  photons=photons, em_int=em_int,/sumt, VERBOSE=VERBOSE, kev=kev, $
-               ioneq_file=ioneq_name, abund_file=abund_name
+               ioneq_file=ioneq_name, abund_file=abund_name, $
+                 sngl_ion=sngl_ion
 
       freefree,temp,lambda,ff,min_abund=min_abund, $
                photons=photons, em_int=em_int,/sumt, VERBOSE=VERBOSE, kev=kev, $
-               ioneq_file=ioneq_name, abund_file=abund_name
+               ioneq_file=ioneq_name, abund_file=abund_name, $
+                 sngl_ion=sngl_ion
 
       two_photon, temp,  lambda, two_phot,min_abund=min_abund, $
                   edensity=edensity, photons=photons, em_int=em_int,/sumt, $
                   VERBOSE=VERBOSE, kev=kev, ioneq_file=ioneq_name, $
-                  abund_file=abund_name, lookup=lookup
+                  abund_file=abund_name, lookup=lookup, $
+                 sngl_ion=sngl_ion
 
    ENDELSE 
 
