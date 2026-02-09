@@ -14,7 +14,7 @@ FUNCTION ch_dr_exp_eps, n, q, x, t
 ;      CHIANTI; ionization balance; dielectronic recombination
 ;
 ; CALLING SEQUENCE:
-;	Result = CH_DR_EXP_EPS(N,Q)
+;	Result = CH_DR_EXP_EPS(N,Q,X,T)
 ;
 ; INPUTS:
 ;      N:    The index of isoelectronic sequence (1=hydrogen,
@@ -43,6 +43,8 @@ FUNCTION ch_dr_exp_eps, n, q, x, t
 ;        Updated header; no change to code.
 ;      Ver.3, 05-Sep-2025, Peter Young
 ;        Added special cases for N=1,2,10 and 14.
+;      Ver.4, 09-Feb-2026, Peter Young
+;        Fixed bug for the N=1,2,10 case when X is a vector.
 ;-
 
 IF n_params() LT 4 THEN BEGIN
@@ -90,13 +92,19 @@ IF n EQ 14 AND q NE 2 THEN p[0]=0.
 ; al. 2018).
 ;
 IF n EQ 1 OR n EQ 2 OR n EQ 10 THEN BEGIN
+  ;
+  ; If X is a vector, then so is eps.
+  ;
   xa0=10.1821
-  p[0]=20.*erfc(2.*(x-xa0))
-ENDIF 
-
-eps=0.0
-FOR i=0,5 DO eps=eps+p[i]*(q/10.0)^i
-
+  eps=20.*erfc(2.*(x-xa0))
+ENDIF ELSE BEGIN
+  ;
+  ; eps is always a scalar in this case.
+  ;
+  eps=0.0
+  FOR i=0,5 DO eps=eps+p[i]*(q/10.0)^i
+ENDELSE 
+  
 output=exp( - eps / (10.*kt) )
 return,output
 

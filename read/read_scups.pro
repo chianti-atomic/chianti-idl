@@ -1,7 +1,7 @@
 
 
 PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
-                fits=fits, hdf5=hdf5, ascii=ascii
+                fits=fits, hdf5=hdf5, ascii=ascii, no_check=no_check
 
 ;+
 ; NAME:
@@ -29,6 +29,10 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
 ;     FITS:      read the SCUPS data in gzipped FITS format
 ;     HDF5:      read the SCUPS data in HDF5 format
 ;     ASCII:     read the ASCII format of the SCUPS file.
+;     NO_CHECK:  By default, the routine checks if the number of
+;                temperatures given for the transition matches the actual
+;                number of temperatures. Set this keyword to skip this
+;                check.
 ;
 ; OUTPUTS:
 ;
@@ -98,6 +102,9 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
 ;         Added a check to make sure the number of temperatures/upsilons
 ;         for each transition matches the actual number. This adds about
 ;         2% to the read time.
+;     Ver.11, 02-Dec-2025, Peter Young
+;         Added /no_check to avoid doing the check introduced in v.10
+;         (this is useful for checking problem files).
 ;-
 
 
@@ -302,31 +309,34 @@ PRO read_scups, splfile, splstr, add_empty=add_empty, verbose=verbose, $
 ; PRY, 4-Oct-2024
 ;  I've added a check on the string lengths to make sure num_temp is consistent
 ;  with nspl.
+;  Use /no_check to skip this check.
 ;
-     for ii=0,nvt-1 do begin   
+     IF NOT keyword_set(no_check) THEN BEGIN 
+       for ii=0,nvt-1 do begin   
         
-        ind=where(nspl eq  num_temp[ii], nn)
-        bigarr=fltarr( num_temp[ii], nn)-1
+         ind=where(nspl eq  num_temp[ii], nn)
+         bigarr=fltarr( num_temp[ii], nn)-1
         
-        reads,file_string[i2[ind]], bigarr
-        len=strlen(file_string[i2[ind]])
-        k=where(len NE num_temp[ii]*12,nk)
-        IF nk GT 0 THEN BEGIN
-          print,file_basename(splfile),' Temperature array does not match no. of temperatures! Returning...'
-          return
-        ENDIF 
-        datastr[ind].stemp[0:num_temp[ii]-1]=bigarr
+         reads,file_string[i2[ind]], bigarr
+         len=strlen(file_string[i2[ind]])
+         k=where(len NE num_temp[ii]*12,nk)
+         IF nk GT 0 THEN BEGIN
+           print,file_basename(splfile),' Temperature array does not match no. of temperatures! Returning...'
+           return
+         ENDIF 
+         datastr[ind].stemp[0:num_temp[ii]-1]=bigarr
 
-        reads,file_string[i3[ind]], bigarr
-        len=strlen(file_string[i2[ind]])
-        k=where(len NE num_temp[ii]*12,nk)
-        IF nk GT 0 THEN BEGIN
-          print,file_basename(splfile),' Upsilon array does not match no. of upsilons! Returning...'
-          return
-        ENDIF 
-        datastr[ind].spl[0:num_temp[ii]-1]=bigarr
+         reads,file_string[i3[ind]], bigarr
+         len=strlen(file_string[i2[ind]])
+         k=where(len NE num_temp[ii]*12,nk)
+         IF nk GT 0 THEN BEGIN
+           print,file_basename(splfile),' Upsilon array does not match no. of upsilons! Returning...'
+           return
+         ENDIF 
+         datastr[ind].spl[0:num_temp[ii]-1]=bigarr
         
-     endfor 
+       ENDFOR 
+     ENDIF 
 
 
 ; Get the CHIANTI version number
