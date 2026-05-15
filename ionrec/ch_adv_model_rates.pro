@@ -167,7 +167,8 @@
 ;              routine
 ;
 ;       v.6, 15 May 2026, Peter Young
-;              Now calls ch_dr_suppress instead of ch_nikolic_dr_suppression.
+;              Now calls ch_dr_suppress instead of ch_nikolic_dr_suppression; added a
+;              call to ch_check_ion_advanced_model to make sure ion has an advanced model.
 ;
 ; VERSION:  6
 ;
@@ -176,7 +177,12 @@
 function ch_adv_model_rates,this_ion,model_temp,model_density,$
             model_atm=model_atm,verbose=verbose,quiet=quiet,$
             n_levels=n_levels,level_resolved=level_resolved
-            
+
+chck=ch_check_ion_advanced_model(this_ion)
+IF NOT keyword_set(quiet) AND chck EQ 0 THEN BEGIN
+  message,/info,/cont,'This ion does not have an advanced model. Returning...'
+  return,-1
+ENDIF 
 
 ryd_ev=13.605698d0
 equiv_elecs=[1,2,1,2,1,2,3,4,5,6,1,2,1,2,3,4]
@@ -258,7 +264,7 @@ if effchg le el then begin
         ci_rates[*,im]=ci_rates[*,im]+ealvl
       endfor
     endif
-    
+
   endif else begin
 
     ; if ab initio rates are not available use CHIANTI rates for ground
