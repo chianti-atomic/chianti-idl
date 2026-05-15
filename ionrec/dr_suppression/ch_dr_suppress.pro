@@ -21,7 +21,9 @@
 ;
 ; OPTIONAL INPUTS:
 ;       Density:  An electron number density (units: cm^-3) for which
-;                 the suppression factor is calculated.
+;                 the suppression factor is calculated. Can be a
+;                 scalar or a 1D array. If the latter, it must be the
+;                 same size as Temperature.
 ;
 ; KEYWORD PARAMETERS:
 ;       NO_LOWT:  If set, then the low-T correction factor is not
@@ -59,6 +61,10 @@
 ;      Ver.5, 08-Sep-2025, Peter Young
 ;        Updated value of w to 5.64586 from 5.64548. The latter was
 ;        from the 2013 paper, the former is from the 2018 paper.
+;      Ver.6, 14-May-2026, Peter Young
+;        Now allows density to be an array; introduced some additional
+;        checks taken from ch_nikolic_dr_suppress, with the aim of
+;        replacing the latter.
 ;-
 
 
@@ -75,6 +81,12 @@ IF n_params() LT 2 THEN BEGIN
 ENDIF 
 
 ;
+; Make sure s is defined as 1 (i.e., no suppression) in case we exit early.
+;
+nt=n_elements(temperature)
+s=make_array(nt,value=1.0)
+
+;
 ; Get zero density rates
 ;
 rate0=ch_diel_recomb(gname,temperature,quiet=quiet,filename=filename)
@@ -84,18 +96,34 @@ IF rate0[0] EQ -1 THEN return,-1
 ; If neither density or pressure have been specified, then just return
 ; the zero-density rates from ch_diel_recomb.
 ;
-IF n_elements(density) EQ 0 AND n_elements(pressure) EQ 0 THEN return,rate0
+IF n_elements(density) EQ 0 AND n_elements(pressure) EQ 0 THEN BEGIN
+  IF NOT keyword_set(quiet) THEN message,/info,/cont,'Neither density or pressure have been specified. Returning zero density rates...'
+  return,rate0
+ENDIF 
 
-
-nt=n_elements(temperature)
+;
+; Make sure only one of density or pressure have been specified.
+;
+IF n_elements(density) GT 0 AND n_elements(pressure) GT 0 THEN BEGIN 
+  message,/info,/cont,'Error: please specify either density or pressure, but not both.'
+  return,-1
+ENDIF 
 
 ;
 ; Note that pressure over-rides density if both are input. 
 ;
-IF n_elements(pressure) NE 0 THEN BEGIN
+IF n_elements(pressure) EQ 1 THEN BEGIN
   density=pressure/temperature
   nd=nt
-ENDIF ELSE BEGIN
+ENDIF ELSE IF n_elements(pressure) GT 1 THEN BEGIN
+  message,/info,/cont,'Error: only a single, constant pressure can be specified'
+  return,-1
+ENDIF ELSE IF n_elements(density) GT 1 THEN BEGIN
+  IF n_elements(density) EQ nt THEN nd=nt ELSE BEGIN 
+    message,/info,/cont,'Error: density array is not the same length as temperature array.'
+    return,-1
+  ENDELSE 
+ENDIF ELSE BEGIN 
   nd=1
 ENDELSE 
 
@@ -105,7 +133,6 @@ ENDELSE
 convertname,gname,iz,ion
 q=ion-1     ; charge
 N=iz-ion+1  ; iso-electronic sequence number (hydrogen=1)
-;theta=temperature/q^2
 
 ;
 ; q0 - Eq. 5 of Nikolic et al. (2013).

@@ -163,9 +163,13 @@
 ;
 ;       v.5, 29 Aug 2024, RPD
 ;              Recombination fitting coefficients and metastable levels are now read
-;              from .rrcoeffs and .drcoeffs files instead of passing coefficients into routine
+;              from .rrcoeffs and .drcoeffs files instead of passing coefficients into
+;              routine
 ;
-; VERSION:  5
+;       v.6, 15 May 2026, Peter Young
+;              Now calls ch_dr_suppress instead of ch_nikolic_dr_suppression.
+;
+; VERSION:  6
 ;
 ;- 
 
@@ -191,8 +195,13 @@ if effchg gt 1 then begin
 
   rr_data=ch_rad_recomb(this_ion,model_temp,/level,quiet=quiet)
   dr_data=ch_diel_recomb(this_ion,model_temp,/level,quiet=quiet)
-  sfactor=ch_nikolic_dr_suppression(this_ion,model_temp,density=model_density,quiet=quiet)
-   
+  ;
+  ; PRY, 14-May-2026: replaced ch_nikolic_dr_suppression with ch_dr_suppress. The latter
+  ; returns the suppressed rate, which is not needed.
+  junk=ch_dr_suppress(this_ion,model_temp,density=model_density, $
+                                 quiet=quiet,s=sfactor)
+;  sfactor=ch_nikolic_dr_suppression(this_ion,model_temp,density=model_density,quiet=quiet) 
+  
   nmeta=n_elements(rr_data[0,*])
   meta_index=indgen(nmeta)+1
 
