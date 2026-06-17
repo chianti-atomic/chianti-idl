@@ -276,6 +276,11 @@
 ;       Ver.27, 07-Feb-2025, Peter Young
 ;            Now catches error in the case the two photon transition
 ;            doesn't exist.
+;
+;       Ver.28, 16-Jun-2026, Peter Young
+;            Now calls get_ieq to interpolate the ioneq data. This
+;            fixes a problem whereby the two_photon emission was set to
+;            zero if the ioneq file contained only one temperature.
 ;-
 
 pro two_photon,temperature,wvl,rad, no_setup=no_setup, $
@@ -534,31 +539,41 @@ for ilist=0,nlist-1 do begin
       endif else abundtest = this_abund gt 0.
 ;
       if abundtest then begin
-                                ;
-         this_ioneq=ioneq(*,iz-1,ion-1)
+
+        yi=get_ieq(temperature,iz,ion,ioneq_logt=ioneq_t,ioneq_frac=ioneq)
+        t_ind=where(yi GT 0.,nt)
+        IF nt GT 0 THEN BEGIN
+          ioneq1=yi[t_ind]
+          temps=temperature[t_ind]
+          ioneqtest=1b
+        ENDIF ELSE BEGIN
+          ioneqtest=0b
+        ENDELSE 
+
+        ;; this_ioneq=ioneq(*,iz-1,ion-1)
          
-         ind_i=where(this_ioneq gt 0.,ngt)
-         IF ngt GE 2 THEN BEGIN
-            goodt=ioneq_t[ind_i]
-            goodi=this_ioneq[ind_i]
-                                ;
-            ltemp=alog10(temperature)
-            t_ind=where( (ltemp GE min(goodt)) AND (ltemp LE max(goodt)) )
-            IF t_ind[0] NE -1 THEN BEGIN
-               y2=spl_init(goodt,alog10(goodi))
-               ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
-               ioneq1=10.^ioneq1
-               temps=temperature[t_ind]
-               nt=n_elements(temps)
-            ENDIF ELSE BEGIN
-               ioneq1=0.
-            ENDELSE
-         ENDIF ELSE BEGIN
-            ioneq1=0.
-         ENDELSE  
-                                ;
-         ioneqtest=ioneq1[0] gt 0.
-                                ;
+        ;;  ind_i=where(this_ioneq gt 0.,ngt)
+        ;;  IF ngt GE 2 THEN BEGIN
+        ;;     goodt=ioneq_t[ind_i]
+        ;;     goodi=this_ioneq[ind_i]
+        ;;                         ;
+        ;;     ltemp=alog10(temperature)
+        ;;     t_ind=where( (ltemp GE min(goodt)) AND (ltemp LE max(goodt)) )
+        ;;     IF t_ind[0] NE -1 THEN BEGIN
+        ;;        y2=spl_init(goodt,alog10(goodi))
+        ;;        ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
+        ;;        ioneq1=10.^ioneq1
+        ;;        temps=temperature[t_ind]
+        ;;        nt=n_elements(temps)
+        ;;     ENDIF ELSE BEGIN
+        ;;        ioneq1=0.
+        ;;     ENDELSE
+        ;;  ENDIF ELSE BEGIN
+        ;;     ioneq1=0.
+        ;;  ENDELSE  
+        ;;                         ;
+        ;;  ioneqtest=ioneq1[0] gt 0.
+        ;;                         ;
                                 ;
          if ioneqtest then BEGIN
                                 ;
@@ -680,29 +695,40 @@ for ilist=0,nlist-1 do BEGIN
 ;
       if abundtest then begin
 ;
-         this_ioneq=ioneq(*,iz-1,ion-1+dielectronic)
+        yi=get_ieq(temperature,iz,ion,ioneq_logt=ioneq_t,ioneq_frac=ioneq)
+        t_ind=where(yi GT 0.,nt)
+        IF nt GT 0 THEN BEGIN
+          ioneq1=yi[t_ind]
+          temps=temperature[t_ind]
+          ioneqtest=1b
+        ENDIF ELSE BEGIN
+          ioneqtest=0b
+        ENDELSE 
+        
+
+         ;; this_ioneq=ioneq(*,iz-1,ion-1+dielectronic)
          
-         ind_i=where(this_ioneq gt 0.,ngt)
-         IF ngt GE 2 THEN BEGIN
-            goodt=ioneq_t[ind_i]
-            goodi=this_ioneq[ind_i]
-                                ;
-            ltemp=alog10(temperature)
-            t_ind=where( (ltemp GE min(goodt)) AND (ltemp LE max(goodt)) )
-            IF t_ind[0] NE -1 THEN BEGIN
-               y2=spl_init(goodt,alog10(goodi))
-               ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
-               ioneq1=10.^ioneq1
-               temps=temperature[t_ind]
-               nt=n_elements(temps)
-            ENDIF ELSE BEGIN
-               ioneq1=0.
-            ENDELSE
-         ENDIF ELSE BEGIN
-            ioneq1=0.
-         ENDELSE  
-                                ;
-         ioneqtest=ioneq1[0] gt 0.
+         ;; ind_i=where(this_ioneq gt 0.,ngt)
+         ;; IF ngt GE 2 THEN BEGIN
+         ;;    goodt=ioneq_t[ind_i]
+         ;;    goodi=this_ioneq[ind_i]
+         ;;                        ;
+         ;;    ltemp=alog10(temperature)
+         ;;    t_ind=where( (ltemp GE min(goodt)) AND (ltemp LE max(goodt)) )
+         ;;    IF t_ind[0] NE -1 THEN BEGIN
+         ;;       y2=spl_init(goodt,alog10(goodi))
+         ;;       ioneq1=spl_interp(goodt,alog10(goodi),y2,ltemp[t_ind])
+         ;;       ioneq1=10.^ioneq1
+         ;;       temps=temperature[t_ind]
+         ;;       nt=n_elements(temps)
+         ;;    ENDIF ELSE BEGIN
+         ;;       ioneq1=0.
+         ;;    ENDELSE
+         ;; ENDIF ELSE BEGIN
+         ;;    ioneq1=0.
+         ;; ENDELSE  
+         ;;                        ;
+         ;; ioneqtest=ioneq1[0] gt 0.
                                 ;
                                 ;
          if ioneqtest then BEGIN
