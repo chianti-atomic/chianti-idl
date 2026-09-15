@@ -1,7 +1,8 @@
 
 function ch_lookup_table_interp, ion_name, rdens, rtemp, cubic=cubic, $
                                  quiet=quiet,popdir=popdir, $
-                                 pad=pad, dir_lookup=dir_lookup
+                                 pad=pad, dir_lookup=dir_lookup, $
+                                 pressure=pressure
 
 ;+
 ; NAME:
@@ -47,6 +48,17 @@ function ch_lookup_table_interp, ion_name, rdens, rtemp, cubic=cubic, $
 ;              DIR_LOOKUP. Retained for backwards compatibility. 
 ;
 ; KEYWORD PARAMETERS:
+;      PRESSURE: Normally, if RDENS and RTEMP are 1D arrays of size
+;                ND and NT, respectively, then the output population
+;                array will have size NDxNTxNL (NL - number of levels).
+;                If ND=NT and /pressure is set, then the output array
+;                will have size NDxNL. For each entry, i, in the ND
+;                direction, the populations are computed assuming
+;                densities and temperatures of RDENS[i] and RTEMP[i].
+;                Thus if RDENS*RTEMP=pressure (constant), then the
+;                populations are computed for a constant pressure. If
+;                NT != ND or RDENS and/or RTEMP are 2D arrays then the
+;                keyword is ignored
 ;      PAD:    The lookup table can be created for only a
 ;              subset of ion's levels (see
 ;              ch_write_pop_lookup_table.pro). By default,
@@ -123,13 +135,15 @@ function ch_lookup_table_interp, ion_name, rdens, rtemp, cubic=cubic, $
 ;      Ver.1, 2-Oct-2019, Peter Young
 ;      Ver.2, 18-Dec-2019, Peter Young
 ;         Now calls to ch_lookup_filename to get the lookup table
-;         filename. Removed option to directly specify the filename. 
+;         filename. Removed option to directly specify the filename.
+;      Ver.3, 15-Sep-2026, Peter Young
+;         Added /pressure keyword.
 ;-
 
 
 IF n_params() LT 3 THEN BEGIN
   print,'Use:  IDL> output=ch_lookup_table_interp(ion_name, dens, temp [, /quiet, dir_lookup='
-  print,'                                         /pad, /quiet ] )'
+  print,'                                         /pad, /quiet, /pressure ] )'
   return,-1
 ENDIF
 
@@ -178,6 +192,23 @@ nl=n_elements(levels)
 
 sd=size(rdens)
 st=size(rtemp)
+
+IF keyword_set(pressure) THEN BEGIN
+   press_swtch=1b
+   IF sd[0] EQ 2 OR st[0] EQ 2 THEN BEGIN
+      press_swtch=0b
+      IF NOT keyword_set(quiet) THEN BEGIN 
+         print,'% CH_LOOKUP_TABLE_INTERP: the /pressure keyword is only for 1D RDENS and RTEMP arrays so it'
+         print,'                          will be ignored.'
+      ENDIF
+   ENDIF ELSE BEGIN 
+      IF nd NE nt THEN BEGIN 
+         print,'% CH_LOOKUP_TABLE_INTERP: the /pressure keyword requires RDENS and RTEMP to have the same '
+         print,'                          numbers of elements. Please see routine header for more info.'
+         return,-1
+      ENDIF 
+   ENDELSE 
+ENDIF 
 
 
 ;
@@ -253,6 +284,12 @@ ENDIF ELSE BEGIN
   FOR i=0,nd-1 DO alpha_t_arr[i,*,*]=alpha_t
 ENDELSE 
 
+
+;
+; This handles the case of /press_swtch (i.e., /pressure) being set.
+;
+IF keyword_set(press_swtch) THEN pop_p=dblarr(nt,nl)
+
 ;
 ; I have to check whether there is only one level, in which case the
 ; arrays are 2D rather than 3D.
@@ -279,6 +316,8 @@ IF nl EQ 1 THEN BEGIN
  ;
   IF rdens_swtch EQ 1 THEN pop=pop[0,*]
   IF rtemp_swtch EQ 1 THEN pop=pop[*,0]
+ ;
+  if keyword_set(press_swtch) then pop_p[*,0]=diag_matrix(pop)
  ;  
 ENDIF ELSE BEGIN 
   FOR i=0,nl-1 DO BEGIN
@@ -300,7 +339,13 @@ ENDIF ELSE BEGIN
       pop_2d[k]=0.
       miss_flag=1b
     ENDIF
+    IF keyword_set(press_swtch) THEN BEGIN
+       IF i EQ 2 THEN print,'**',pop_2d[30,30]
+       pop_p[*,i]=diag_matrix(pop_2d)
+       IF i EQ 2 THEN print,'**',pop_p[30,2]
+    ENDIF 
     pop[*,*,i]=temporary(pop_2d)
+   ;
   ENDFOR 
  ;
   IF rdens_swtch EQ 1 THEN pop=pop[0,*,*]
@@ -362,6 +407,7 @@ IF keyword_set(pad) THEN BEGIN
   levels=indgen(data.nlev_all)+1
 ENDIF 
 
+if keyword_set(press_swtch) then pop=temporary(pop_p)
 output={pop: pop, $
         ldens: log_rdens, $
         ltemp: log_rtemp, $
