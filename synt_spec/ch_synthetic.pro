@@ -791,9 +791,15 @@
 ;
 ;          v.63, 31-Jul-2025, Peter Young
 ;                Fixed problem if the ioneq file is specified as an input but it
-;                only contains one temperature
+;                only contains one temperature.
 ;
-;   VERSION 63
+;          v.64, 15-Sep-2026, Peter Young
+;                For the /goft option, the temperature range for the G(T) is
+;                restricted to that where the ion fraction is >10^-6 of the
+;                maximum. Previously the entire temperature range in the ioneq
+;                file was used.
+;
+;   VERSION 64
 ;-
 PRO info_progress, pct,lastpct,pctage, pct_slider_id,$
            interrupt_id,halt,quiet, snote,  group=group
@@ -1539,7 +1545,10 @@ PRO ch_synthetic, wmin, wmax, output=output, err_msg=err_msg, msg=msg, $
                                 ; Modified t_index due to problems with Li-sequence ions.
                                 ;
 ;               t_index=WHERE(this_ioneq NE 0.)
-                 t_index=WHERE(this_ioneq GE this_ioneq/1e6)
+               ;
+               ; PRY, 15-Sep-2026
+               ; I've inserted a max below.
+                t_index=WHERE(this_ioneq GE max(this_ioneq)/1e6)
               ENDELSE 
 
            ENDIF ELSE BEGIN 
