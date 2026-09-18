@@ -200,9 +200,11 @@ FUNCTION ch_setup_ion, ions, wvlmin=wvlmin, wvlmax=wvlmax, ioneq_file=ioneq_file
 ;      v.13, 14 Sept 2023, GDZ, modified how the number of levels is set
 ;               so the keyword /no_auto (to exclude the autoionizing states)
 ;               can be used.
+;      Ver.14, 17-Sep-2024, Peter Young
+;         The method for flagging the dielectronic transitions was very slow,
+;         so a faster method is used now.
 ;
-;
-; VERSION     : 13
+; VERSION     : 14
 ;
 ; 
 ;-
@@ -260,7 +262,6 @@ read_wgfa_str,wname,wgfastr,two_photon=two_photon
 
 index_wgfa=ch_setup_index_wgfa(wgfastr,wvlmin=wvlmin,wvlmax=wvlmax, $
                                obs_only=obs_only,count=count,levmax=n_levels)
-
 
 IF count EQ 0 THEN BEGIN
   index_wgfa=-1
@@ -324,15 +325,21 @@ ip=ch_ip(ions,/cm)
 
 ;
 ; Populate the diel tag in wgfastr.
+; 17-Sep-2026, PRY: This is a faster method of populating wgfastr.diel
 ;
-k=where(ecm GT ip,ndr)
-IF ndr GT 0 THEN BEGIN
-  drlev=l1a[k]
-  FOR i=0,ndr-1 DO BEGIN 
-    j=where(wgfastr.lvl2 EQ drlev[i],nj)
-    IF nj NE 0 THEN wgfastr[j].diel=1b
-  ENDFOR 
-ENDIF 
+k=where(ecm[wgfastr.lvl2-1] GT ip,nk)
+IF nk GT 0 THEN wgfastr[k].diel=1b
+
+;; Previous code
+;;
+;; k=where(ecm GT ip,ndr)
+;; IF ndr GT 0 THEN BEGIN
+;;   drlev=l1a[k]
+;;   FOR i=0,ndr-1 DO BEGIN 
+;;     j=where(wgfastr.lvl2 EQ drlev[i],nj)
+;;     IF nj NE 0 THEN wgfastr[j].diel=1b
+;;   ENDFOR 
+;; ENDIF 
 
 ;
 ; Initially create the "core" structure, i.e., containing the
