@@ -35,16 +35,18 @@ PRO which_line, ionname, wvl, narrow=narrow, all=all, path=path
 ; OUTPUTS:
 ;     Prints a list of atomic transitions and wavelengths for lines close to
 ;     the input wavelength. A '*' is placed next to the closest wavelength
-;     match.
+;     match. The final column gives the index of the transition within the
+;     wgfa file. This can be used to identify the transition in the output
+;     from the read_wgfa2 or read_wgfa_str routines.
 ;
 ; CALLS:
 ;     CONVERTNAME, ZION2FILENAME, READ_WGFA2, READ_ELVLC
 ;
 ; EXAMPLE:
 ;     IDL> which_line,'o_6',1032
-;     Wavelength   i   j Lower level           Upper level             A-value
-;       1037.615   1   2 1s2.2s 2S1/2        - 1s2.2p 2P1/2          4.21e+008
-;       1031.914   1   3 1s2.2s 2S1/2        - 1s2.2p 2P3/2          4.28e+008
+;     Wavelength   i   j  Lower level           Upper level             A-value  wgfa index
+;       1031.912   1   3  1s2.2s 2S1/2        - 1s2.2p 2P3/2           4.16e+08           1
+;       1037.613   1   2  1s2.2s 2S1/2        - 1s2.2p 2P1/2           4.10e+08           0
 ;
 ; MODIFICATION HISTORY:
 ;     Ver.1, 22-Jun-2004, Peter Young
@@ -55,6 +57,8 @@ PRO which_line, ionname, wvl, narrow=narrow, all=all, path=path
 ;        /all to show all wavelengths).
 ;     Ver.4, 25-Jun-2020, Peter Young
 ;        added PATH= optional input; updated header format.
+;     Ver.5, 10-Nov-2026, Peter Young
+;        added the wgfa index to the output.
 ;-
 
 
@@ -111,15 +115,15 @@ getmin=min(abs(abs(wavel[ind])-wvl),imin)
 
 n=n_elements(ind)
 
-print,'     Wavelength   i   j  Lower level           Upper level             A-value'
+print,'     Wavelength   i   j  Lower level           Upper level             A-value  wgfa index'
 FOR i=0,n-1 DO BEGIN
   j=ind[i]
   term1=strpad(term[lvl1[j]-1],20,/after,fill=' ')
   term2=strpad(term[lvl2[j]-1],20,/after,fill=' ')
   IF i EQ imin THEN str1='*' ELSE str1=''
-  print,format='(a1,f14.3,2i4,"  ",a20,"- ",a20,e11.2)', $
+  print,format='(a1,f14.3,2i4,"  ",a20,"- ",a20,e11.2,a12)', $
        str1,wavel[j],lvl1[j],lvl2[j], $
-       term1,term2,a_value[j]
+       term1,term2,a_value[j],j
 ENDFOR
 
 IF NOT keyword_set(all) THEN BEGIN
