@@ -178,7 +178,7 @@ ENDIF ELSE BEGIN
   multr=1.
 ENDELSE
 
-ind=where( (wecm GE 0.) AND (max(ewvl) GE ecm) )
+ind=where( (wecm GE 0.) AND (max(ewvl) GE (ip-ecm)) )
 ni=n_elements(ind)
 IF ind[0] EQ -1 THEN BEGIN
   IF keyword_set(kev) THEN wvl=wvl_save
